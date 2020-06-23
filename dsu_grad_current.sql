@@ -180,7 +180,7 @@
                    AND    shrdgmr_degs_code   = 'AW'
 --                   AND    shrdgmr_degs_code IN ('AW','PN') -- DELETE THIS BEFORE FINAL PROCESSING in 2019
                    AND    spriden_change_ind IS NULL
-                   AND    shrdgmr_grad_date BETWEEN to_date('01-JUL-19') AND to_date('30-JUN-20')  -- change every year
+                   AND    shrdgmr_grad_date > to_date(v_gradstart) < to_date(v_gradend)  -- change every year
                  );
 
  -- G-02 --------------------------------------------------------------------------------------------
@@ -829,7 +829,7 @@
            AND    stvdegc_acat_code  >= 20
            AND    sordegr_degc_code  <> '000000'
            AND    spriden_change_ind IS NULL
-           AND    sordegr_degc_date <= to_date('30-JUN-19') --change every year; one year lag
+           AND    sordegr_degc_date <= to_date(v_gradstart) --change every year; one year lag
            GROUP  BY sordegr_pidm, spriden_id, stvdegc_acat_code, sordegr_degc_date,
                      sordegr_degc_code, SYSDATE, sordegr_sbgi_code
            ORDER  BY sordegr_pidm, stvdegc_acat_code DESC, sordegr_degc_date DESC;
@@ -890,7 +890,7 @@
                            s2.shrdgmr_pidm||s2.shrdgmr_degc_code||s2.shrdgmr_grad_date AS degrec
                     FROM   shrdgmr s2
                     WHERE  s2.shrdgmr_degs_code  = 'AW'
-                    AND    s2.shrdgmr_grad_date <= to_date('30-JUN-19')  -- change every year; one year lag
+                    AND    s2.shrdgmr_grad_date <= to_date(v_gradstart)  -- change every year; one year lag
                     AND    s2.shrdgmr_grad_date IS NOT NULL 
                   ) temp1
            WHERE  temp1.shrdgmr_degc_code = stvdegc_code
@@ -967,9 +967,9 @@
                                        'AAS', '03', 'BFA', '05',
                                        'APE', '03'
            );
-           
-           
-           
+
+
+
 
  -- G-18 --------------------------------------------------------------------------------------------
  -- ELEMENT NAME: Required Hours for Degree
@@ -1714,8 +1714,8 @@
     DELETE 
  -- SELECT *
     FROM   dxgrad_current
-    WHERE  dxgrad_dsugrad_dt < to_date('30-JUN-19')  -- update each year
-    OR     dxgrad_dsugrad_dt > to_date('01-JUL-20'); -- update each year
+    WHERE  dxgrad_dsugrad_dt < to_date(v_gradstart)  -- update each year
+    OR     dxgrad_dsugrad_dt > to_date(v_gradend); -- update each year
     --
     
     -- SELECT * FROM dxgrad_current WHERE dxgrad_gpa > 400
