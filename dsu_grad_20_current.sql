@@ -1,4 +1,5 @@
 
+
  ----------------------------------------------------------------------------------------------------
  -- Create and Define Variables.                                                                   --
  ----------------------------------------------------------------------------------------------------
@@ -234,7 +235,7 @@
  -- G-04 --------------------------------------------------------------------------------------------
  -- ELEMENT NAME: Utah County Code
  -- FIELD NAME:   G_COUNTY_ORIGIN
- /* DEFINITION:   The Utah county code indicating the student’s county of origin as described at the 
+ /* DEFINITION:   The Utah county code indicating the studentÂ’s county of origin as described at the 
                   time of first application to the institution, and if the S_STATE_ORIGIN is UT. 
                   Enter UT030 if county is Unknown. Enter UT097 if student is Out of State, Out of 
                   US. Enter UT099 if student is Out of State, In the US.                           */
@@ -525,7 +526,7 @@
  -- FIELD NAME:   G_CIP 
  /* DEFINITION:   Use the 2010 version of the Classification of Instructional Programs (CIP) to best 
                   identify the specific programs in which the degree is awarded. Thus, report a 
-                  bachelor’s degree in Business Administration with a business economics major in 
+                  bachelorÂ’s degree in Business Administration with a business economics major in 
                   Business/Managerial Economics (520601), not in Business, General (520101).       */
  ----------------------------------------------------------------------------------------------------
 
@@ -690,7 +691,7 @@
  -- FIELD NAME:   G_GRAD_HRS 
  /* DEFINITION:   Total number of overall undergraduate hours when the student graduated. This field 
                   should include all hours, except for remedial hours which should not be included 
-                  (i.e. S20 + G07 + G09 – G10 = G08). Hours should be converted to semester hours. */
+                  (i.e. S20 + G07 + G09 Â– G10 = G08). Hours should be converted to semester hours. */
  ----------------------------------------------------------------------------------------------------
  -- this query needs to be at the bottom because, for some unknown reason, running it earlier in the
  -- script will not populate most of the students a problem to solve another day.
@@ -1061,7 +1062,7 @@
  -- FIELD NAME:   G_HIGH_SCHOOL
  /* DEFINITION:   Refer to S_HIGH_SCHOOL in the Students Data Dictionary for a complete list of high 
                   schools. The High School or Special Secondary School code which uniquely identifies 
-                  each student’s secondary institution. The codes for any secondary institution 
+                  each studentÂ’s secondary institution. The codes for any secondary institution 
                   located within the United States can be found by accessing the URL 
                   http://www.act.org/aap/regist/lookuphs.html                                      */
  ----------------------------------------------------------------------------------------------------
