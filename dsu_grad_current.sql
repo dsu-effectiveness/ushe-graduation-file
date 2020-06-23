@@ -729,28 +729,17 @@
     SET    dxgrad_other_hrs = 
            (
             SELECT round(sum(shrtrce_credit_hours),1) * 10
-            FROM   shrtrce, shrtrit
+            FROM   shrtrce, shrtrit, stvsbgi
             WHERE  shrtrce_pidm        = dxgrad_pidm
             AND    shrtrce_pidm        = shrtrit_pidm
             AND    shrtrce_trit_seq_no = shrtrit_seq_no
-            AND    (
-                        shrtrit_sbgi_code LIKE 'CLEP%'
-                     OR shrtrit_sbgi_code LIKE 'CLP%'
-                     OR shrtrit_sbgi_code LIKE 'FL%'
-                     OR shrtrit_sbgi_code LIKE 'VERT%'
-                     OR shrtrit_sbgi_code LIKE 'AP%'
-                     OR shrtrit_sbgi_code LIKE 'MIL%'
-                     OR shrtrit_sbgi_code LIKE 'MLA%'
-                   )
+            AND    shrtrit_sbgi_code    = stvsbgi_code
+            AND    stvsbgi_code         > '999999'
+            AND    stvsbgi_srce_ind     is null
+            AND    stvsbgi_code         not in ('DSU001', 'ELC')
             GROUP  BY shrtrce_pidm
            );
 
-/*
-                  AND    shrtrit_sbgi_code    = stvsbgi_code
-                 AND    stvsbgi_code         > '999999'
-                 AND    stvsbgi_srce_ind     is null
-                 AND    stvsbgi_code         not in ('DSU001', 'ELC')
- */
     --
  
  -- G-15 --------------------------------------------------------------------------------------------
