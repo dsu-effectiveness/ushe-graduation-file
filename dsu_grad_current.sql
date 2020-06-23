@@ -773,7 +773,8 @@
              AND    shrtckg_pidm        = dxgrad_pidm
              AND    shrtckn_subj_code IN ('ENGL','MATH','ESL','ESOL')
              AND    shrtckn_crse_numb <  '1000'
-             AND    NOT shrtckg_grde_code_final IN ('AU','F','WF','W')
+             AND    shrtckg_gmod_code NOT IN ('A', 'N')
+             AND    NOT shrtckg_grde_code_final IN ('I', 'NC', 'F', 'W')
              AND    (
                          shrtckn_repeat_course_ind <> 'E' 
                       OR shrtckn_repeat_course_ind IS NULL 
@@ -781,7 +782,8 @@
              AND    shrtckn_term_code <= dxgrad_term_code_grad                      
              GROUP  BY shrtckg_pidm
            );
-    --          
+
+    --
     
  -- G-16 --------------------------------------------------------------------------------------------
  -- ELEMENT NAME: Previous Degree Type
