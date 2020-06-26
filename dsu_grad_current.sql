@@ -831,10 +831,11 @@
            AND    stvdegc_acat_code  >= 20
            AND    sordegr_degc_code  <> '000000'
            AND    spriden_change_ind IS NULL
-           AND    sordegr_degc_date <= to_date(v_gradstart) --change every year; one year lag
+           AND    sordegr_degc_date <= to_date('01-JUN-2019') --change every year; one year lag
            GROUP  BY sordegr_pidm, spriden_id, stvdegc_acat_code, sordegr_degc_date,
                      sordegr_degc_code, SYSDATE, sordegr_sbgi_code
            ORDER  BY sordegr_pidm, stvdegc_acat_code DESC, sordegr_degc_date DESC;
+
     --
     
  -- Get the degrees from SHRTRAM and SHATRAM that are not on SOAPCOL/SORDEGR   
@@ -942,6 +943,7 @@
                  WHEN dxgrad_prev_degr LIKE 'M%'   THEN '07' 
                  END
            );
+
     --
  
  -- Use this query to view records that were just updated
@@ -969,8 +971,6 @@
                                        'AAS', '03', 'BFA', '05',
                                        'APE', '03'
            );
-
-
 
 
  -- G-18 --------------------------------------------------------------------------------------------
@@ -1086,6 +1086,7 @@
                     )
            )
     WHERE  dxgrad_hs_code IS NULL;
+
     --
 
  -- Fetch high school codes that weren't found in the above query using the older method.
@@ -1253,6 +1254,8 @@
              FROM   ushe_ref_cip2010
              WHERE  cip_code = dxgrad_cipc_code
            );
+
+
 --           
 --    UPDATE dxgrad_current 
 --    SET    dxgrad_ushe_majr_desc = 'General Education'
