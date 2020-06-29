@@ -733,8 +733,6 @@ set dxgrad_remed_hrs = (
       and shrtckn_term_code <= dxgrad_term_code_grad
     group by shrtckg_pidm);
 
---
-
 -- G-16 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Previous Degree Type
 -- FIELD NAME:   G_PREV_DEG_TYPE
@@ -742,133 +740,138 @@ set dxgrad_remed_hrs = (
                  institution; including your own institution.                                     */
 ----------------------------------------------------------------------------------------------------
 
--- To compile the previous degree type, we will have to create a table for previous, load it with
--- data, and query against it with the dxgrad table.
-
--- First, back up the old table
--- CREATE TABLE prevdegrees1920 AS SELECT * FROM previous_degrees@tst1db;
-drop table previous_degrees;
-create table previous_degrees as
-select *
-from previous_degrees_special;
--- nts::replace with variable
---
-
--- Next, clear the current table
-truncate table previous_degrees;
-alter table previous_degrees
-    modify pg_degconc varchar(30);
---
-
--- Get the degrees from other institution coded by Admissions in SOAPCOL and SHRTRAN
-insert into previous_degrees
-select
-    sordegr_pidm,
-    spriden_id,
-    MAX(stvdegc_acat_code) as acat,
-    sordegr_degc_date,
-    sordegr_degc_code,
-    sordegr_sbgi_code,
-    MIN(decode(stvdegc_dlev_code, 'DR', '0', 'MA', '0', 'BA', '1', 'AS', '2', 'LA', '3', '4')) as degsort,
-    sordegr_pidm || sordegr_degc_code || sordegr_degc_date as combined,
-    SYSDATE
-from saturn.sordegr, saturn.stvdegc, spriden
-where sordegr_pidm = spriden_pidm
-  and sordegr_degc_code = stvdegc_code
-  and stvdegc_acat_code >= 20
-  and sordegr_degc_code <> '000000'
-  and spriden_change_ind is null
-  and sordegr_degc_date <= to_date('01-JUN-2019') --change every year; one year lag
-group by sordegr_pidm, spriden_id, stvdegc_acat_code, sordegr_degc_date, sordegr_degc_code, SYSDATE, sordegr_sbgi_code
-order by sordegr_pidm, stvdegc_acat_code desc, sordegr_degc_date desc;
-
---
-
--- Get the degrees from SHRTRAM and SHATRAM that are not on SOAPCOL/SORDEGR
-insert into previous_degrees
-select
-    shrtram_pidm,
-    spriden_id,
-    MAX(stvdegc_acat_code) as acat,
-    shrtram_attn_end_date,
-    shrtram_degc_code,
-    '',
-    MIN(decode(stvdegc_dlev_code, 'DR', '0', 'MA', '0', 'BA', '1', 'AS', '2', 'LA', '3', '4')) as degsort,
-    shrtram_pidm || shrtram_degc_code || shrtram_attn_end_date as combined,
-    SYSDATE
-from stvdegc, shrtram, spriden
-where shrtram_pidm = spriden_pidm
-  and shrtram_degc_code = stvdegc_code
-  and stvdegc_acat_code >= 20
-  and shrtram_degc_code <> '000000'
-  and spriden_change_ind is null
-    /*  AND    NOT EXISTS (
-                          SELECT 'X'
-                          FROM   previous_degrees b
-                          WHERE  b.pg_pidm||pg_degcode = shrtram_pidm||shrtram_degc_code
-                        ) */
-group by shrtram_pidm, spriden_id, stvdegc_acat_code, shrtram_attn_end_date, shrtram_degc_code, SYSDATE;
---
-
--- Get the degrees from SHADEGR (DSU Awards)
-insert into previous_degrees
-select
-    s1.shrdgmr_pidm as pidm,
-    spriden_id,
-    MAX(stvdegc_acat_code) as hideg,
-    temp1.degdate,
-    temp1.shrdgmr_degc_code as degreecode,
-    '4272' as sbgi,
-    MIN(decode(stvdegc_dlev_code, 'BA', '1', 'AS', '2', 'LA', '3', 4)) as degsort,
-    degrec as degconc,
-    SYSDATE
-from shrdgmr s1, stvdegc, spriden, (
-    select
-        s2.shrdgmr_pidm,
-        s2.shrdgmr_grad_date as degdate,
-        s2.shrdgmr_degc_code,
-        s2.shrdgmr_pidm || s2.shrdgmr_degc_code || s2.shrdgmr_grad_date as degrec
-    from shrdgmr s2
-    where s2.shrdgmr_degs_code = 'AW'
-      and s2.shrdgmr_grad_date <= to_date(v_gradstart) -- change every year; one year lag
-      and s2.shrdgmr_grad_date is not null) temp1
-where temp1.shrdgmr_degc_code = stvdegc_code
-  and s1.shrdgmr_pidm = spriden_pidm
-  and s1.shrdgmr_pidm = temp1.shrdgmr_pidm
-  and (s1.shrdgmr_pidm || s1.shrdgmr_degc_code || s1.shrdgmr_grad_date) = degrec
-  and spriden_change_ind is null
-group by s1.shrdgmr_pidm, degrec, temp1.degdate, temp1.shrdgmr_degc_code, spriden_id;
-
-
--- Now, update the dxgrad_current table with the highest level previous degree type from the table
 update dxgrad_current
 set dxgrad_prev_degr = (
-    select
-        substr(MAX(temp2.onerec), 2, 5)
-    from previous_degrees a
-    left join (
+    select distinct
+        case
+            when prev_degree_max_lvl like 'CER0' then '01'
+            when prev_degree_max_lvl like 'CER1' then '02'
+            when prev_degree_max_lvl like 'A%' then '03'
+            when prev_degree_max_lvl like 'B%' then '05'
+            when prev_degree_max_lvl like 'M%' then '07'
+        end
+    from (
         select
-            pg_pidm,
-            MIN(minsort) || pg_degcode as onerec
-        from previous_degrees, (
-            select b.pg_pidm as pidm, MIN(b.pg_degsort) minsort from previous_degrees b group by b.pg_pidm) temp
-        where pg_pidm = temp.pidm
-          and pg_degsort = minsort
-        group by pg_pidm, pg_degcode) temp2 on pg_degsort || a.pg_degcode = temp2.onerec
-    where a.pg_pidm = temp2.pg_pidm
-      and a.pg_pidm = dxgrad_pidm
-    group by a.pg_pidm);
---
+            pidm,
+            case
+                when deg_rank_1 > deg_rank_2 then deg_desc_1
+                when deg_rank_1 > deg_rank_3 then deg_desc_1
+                when deg_rank_2 > deg_rank_1 then deg_desc_2
+                when deg_rank_2 > deg_rank_3 then deg_desc_2
+                when deg_rank_3 > deg_rank_1 then deg_desc_3
+                when deg_rank_3 > deg_rank_2 then deg_desc_3
+                when (deg_rank_2 > deg_rank_1 or deg_rank_2 > deg_rank_3) then deg_desc_2
+                else coalesce(deg_desc_1, deg_desc_2, deg_desc_3)
+            end as prev_degree_max_lvl
+        from (
+            with cte_prev_dgr as (
+                select shrdgmr_pidm, max(shrdgmr_seq_no) as shrdgmr_seq_no
+                from shrdgmr
+                where shrdgmr_seq_no > 1
+                group by shrdgmr_pidm),
+                -- Grabs Highest Degree earned from a previous institution (SORDEGR)
+                cte_prev_dgr2 as (
+                    select
+                        sordegr_pidm as pidm,
+                        max(sordegr_degc_date) as max_sordegr_degc_date,
+                        max(case
+                                when stvdegc_dlev_code = 'DR' then '5'
+                                when stvdegc_dlev_code = 'MA' then '4'
+                                when stvdegc_dlev_code = 'BA' then '3'
+                                when stvdegc_dlev_code = 'AS' then '2'
+                                when stvdegc_dlev_code = 'LA' then '1'
+                                else '0'
+                            end) as deg_rank
+                    from saturn.sordegr, saturn.stvdegc, spriden
+                    where sordegr_pidm = spriden_pidm
+                      and sordegr_degc_code = stvdegc_code
+                      and stvdegc_acat_code >= 20
+                      and sordegr_degc_code <> '000000'
+                      and spriden_change_ind is null
+                      and sordegr_degc_date <= to_date('01-JUN-2019')
+                    group by sordegr_pidm),
 
--- Now change the degree to the IMC standard for previous degree
-update dxgrad_current
-set dxgrad_prev_degr = (case
-                            when dxgrad_prev_degr like 'CER0' then '01'
-                            when dxgrad_prev_degr like 'CER1' then '02'
-                            when dxgrad_prev_degr like 'A%' then '03'
-                            when dxgrad_prev_degr like 'B%' then '05'
-                            when dxgrad_prev_degr like 'M%' then '07'
-                        end);
+                -- used to align pidm and degree to choose whichever degree is the highest level (rank)
+                cte_prev_dgr3 as (
+                    select
+                        pidm,
+                        stvdegc_code,
+                        deg_rank
+                    from cte_prev_dgr2, saturn.sordegr, saturn.stvdegc, spriden
+                    where pidm = sordegr_pidm
+                      and case
+                              when stvdegc_dlev_code = 'DR' then '5'
+                              when stvdegc_dlev_code = 'MA' then '4'
+                              when stvdegc_dlev_code = 'BA' then '3'
+                              when stvdegc_dlev_code = 'AS' then '2'
+                              when stvdegc_dlev_code = 'LA' then '1'
+                              else '0'
+                          end = deg_rank
+                      and max_sordegr_degc_date = sordegr_degc_date
+                      and sordegr_pidm = spriden_pidm
+                      and sordegr_degc_code = stvdegc_code
+                      and stvdegc_acat_code >= 20
+                      and sordegr_degc_code <> '000000'
+                      and spriden_change_ind is null
+                      and sordegr_degc_date <= to_date('01-JUN-2019')),
+                -- Grab degrees from Transferred In Students (SHRTRAM)
+                cte_prev_deg4 as (
+                    select
+                        shrtram_pidm,
+                        shrtram_degc_code,
+                        case
+                            when stvdegc_dlev_code = 'DR' then '5'
+                            when stvdegc_dlev_code = 'MA' then '4'
+                            when stvdegc_dlev_code = 'BA' then '3'
+                            when stvdegc_dlev_code = 'AS' then '2'
+                            when stvdegc_dlev_code = 'LA' then '1'
+                            else '0'
+                        end as deg_rank_3
+                    from stvdegc, shrtram, spriden
+                    where shrtram_pidm = spriden_pidm
+                      and shrtram_degc_code = stvdegc_code
+                      and stvdegc_acat_code >= 20
+                      and shrtram_degc_code <> '000000'
+                      and spriden_change_ind is null)
+
+            select distinct
+                s1.shrdgmr_pidm as pidm,
+                s2.shrdgmr_degc_code as deg_desc_1,
+                shrdgmr_program as program,
+                shrdgmr_levl_code as student_level,
+                case
+                    when shrdgmr_degc_code like 'M%' then '4'
+                    when shrdgmr_degc_code like 'B%' then '3'
+                    when shrdgmr_degc_code like 'A%' then '2'
+                    when shrdgmr_degc_code like 'C%' then '1'
+                    when shrdgmr_degc_code like 'L%' then '1'
+                    else '0'
+                end as deg_rank_1,
+                s3.deg_rank as deg_rank_2,
+                s3.stvdegc_code as deg_desc_2,
+                deg_rank_3,
+                shrtram_degc_code as deg_desc_3,
+                coalesce(greatest(s3.deg_rank, case
+                                                   when shrdgmr_degc_code like 'M%' then '4'
+                                                   when shrdgmr_degc_code like 'B%' then '3'
+                                                   when shrdgmr_degc_code like 'A%' then '2'
+                                                   when shrdgmr_degc_code like 'C%' then '1'
+                                                   when shrdgmr_degc_code like 'L%' then '1'
+                                                   else '0'
+                                               end), case
+                                                         when shrdgmr_degc_code like 'M%' then '4'
+                                                         when shrdgmr_degc_code like 'B%' then '3'
+                                                         when shrdgmr_degc_code like 'A%' then '2'
+                                                         when shrdgmr_degc_code like 'C%' then '1'
+                                                         when shrdgmr_degc_code like 'L%' then '1'
+                                                         else '0'
+                                                     end, s3.deg_rank) as greatest_deg_rank
+            from cte_prev_dgr s1
+            left join shrdgmr s2 on s1.shrdgmr_pidm = s2.shrdgmr_pidm and s2.shrdgmr_seq_no = s1.shrdgmr_seq_no - 1
+            left join cte_prev_dgr3 s3 on s3.pidm = s1.shrdgmr_pidm
+            left join cte_prev_deg4 s4 on s4.shrtram_pidm = s1.shrdgmr_pidm
+            where s2.shrdgmr_seq_no <> s1.shrdgmr_seq_no) s1)
+    where dxgrad_pidm = pidm);
 
 --
 
