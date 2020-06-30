@@ -887,7 +887,7 @@ set dxgrad_prev_degr = (
 /* DEFINITION:   The Award Level codes that correspond with the IPEDS Completion Survey.          */
 ----------------------------------------------------------------------------------------------------
 
--- Set IPEDS Level based on degc_code
+-- Set IPEDS Level based on level code and program credit hours
 
 update dxgrad_current dx
 set dxgrad_ipeds_levl = (
@@ -918,8 +918,33 @@ set dxgrad_ipeds_levl = (
     where dx.dxgrad_pidm = s1.shrdgmr_pidm
       and dx.dxgrad_dgmr_prgm = s1.shrdgmr_program
       and dx.dxgrad_levl_code = s1.shrdgmr_levl_code
-      and shrdgmr_grad_date > to_date(v_gradstart)
-      and shrdgmr_grad_date < to_date(v_gradend));
+      and shrdgmr_grad_date > to_date('30-JUN-19')
+      and shrdgmr_grad_date < to_date('01-JUL-20'));
+
+ -- Updates IPEDS Level if program is missing from (smbpgen)
+    update dxgrad_current
+    set    dxgrad_ipeds_levl = decode
+           (
+             dxgrad_degc_code,
+          -- |    02    | |    03    | |    05     |     07     | --
+              'CER1','02', 'AA',  '03', 'BA',  '05', 'MACC','07',
+                           'AC',  '03', 'BS',  '05',
+                           'AB',  '03', 'BSN', '05',
+                           'AS',  '03', 'BIS', '05',
+                           'AAS', '03', 'BFA', '05',
+                           'APE', '03'
+           ) where dxgrad_ipeds_levl is null;
+
+          select *
+from
+
+
+
+/* Need to update Certificates 1A and 1B by program code
+UPDATE dxgrad_current
+SET dxgrad_ipeds_levl = (select )
+*/
+
 
 -- G-18 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Required Hours for Degree
@@ -948,6 +973,21 @@ set dxgrad_req_hrs = (
                on s2.smbpgen_program = s1.smbpgen_program and s2.max_smbpgen_term_code_eff = s1.smbpgen_term_code_eff
     where dx.dxgrad_dgmr_prgm = s1.smbpgen_program);
 
+    UPDATE dxgrad_current
+    SET    dxgrad_req_hrs =
+           (
+             SELECT HRS_THIS_YR --nts::replace with variable.
+             FROM   dsc_programs_all
+             WHERE  acyr_code = '1920'
+             AND    dxgrad_dgmr_prgm = prgm_code
+             AND    (
+                      dxgrad_degc_code = degc_code
+                      OR
+                      dxgrad_grad_majr = majr_code
+                    )
+             AND    ROWNUM = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
+
+           ) WHERE dxgrad_req_hrs is null;
 
 --
 
@@ -1169,6 +1209,12 @@ set dxgrad_ushe_majr_desc = (
     select ciptitle
     from ushe_ref_cip2010
     where cip_code = dxgrad_cipc_code);
+
+/* update use this and update perkins indicator from this table on Monday.com
+select *
+from stvcipc;
+
+ */
 
 
 --           
