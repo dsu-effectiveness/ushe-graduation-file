@@ -147,7 +147,7 @@ insert into dxgrad_current
       and shrdgmr_degc_code = stvdegc_code
       and shrdgmr_degs_code = 'AW'
       and spriden_change_ind is null
-      and shrdgmr_grad_date BETWEEN to_date(:gradstart) AND to_date(:gradend) -- change every year
+      and shrdgmr_grad_date between to_date(:gradstart) and to_date(:gradend) -- change every year
 );
 
 -- G-02 --------------------------------------------------------------------------------------------
@@ -459,10 +459,14 @@ where shrdgmr_pidm = spriden_pidm
 ----------------------------------------------------------------------------------------------------
 
 -- Fetch CIP Codes from CIP2010 Table
+-- Fetch CIP Codes from CIP2010 Table
 update dxgrad_current
-set dxgrad_cipc_code = (
-    select lpad(stvmajr_cipc_code, 6, '0') from stvmajr, shrdgmr where stvmajr_code = shrdgmr_majr_code_1
-);
+set dxgrad_cipc_code = (select distinct stvmajr_cipc_code
+from stvmajr, shrdgmr
+    where stvmajr_code = shrdgmr_majr_code_1
+      and dxgrad_pidm = shrdgmr_pidm
+      and dxgrad_grad_majr = stvmajr_code
+      and dxgrad_degc_code = shrdgmr_degc_code);
 
 -- This query checks for null CIP Codes as there should always be a CIP Code.
 select
@@ -852,11 +856,11 @@ set dxgrad_ipeds_levl = (
             when shrdgmr_levl_code = 'UG' then case
                                                    when smbpgen_req_credits_overall between 1 and 8 then '1A'
                                                    when smbpgen_req_credits_overall between 9 and 29 then '1B'
-                                                   when smbpgen_req_credits_overall between 30 and 59 then '2'
-                                                   when smbpgen_req_credits_overall between 60 and 119 then '3'
-                                                   when smbpgen_req_credits_overall > 119 then '5'
+                                                   when smbpgen_req_credits_overall between 30 and 59 then '02'
+                                                   when smbpgen_req_credits_overall between 60 and 119 then '03'
+                                                   when smbpgen_req_credits_overall > 119 then '05'
                                                end
-            when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '7'
+            when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '07'
         end ipeds_awrd_lvl_2
     from shrdgmr s1
     left join smbpgen s2 on s2.smbpgen_program = s1.shrdgmr_program
@@ -877,17 +881,12 @@ where dxgrad_ipeds_levl is null;
 
 -- Updates IPEDS Level Certificates to conform with IPEDS reporting
 update dxgrad_current
-set dxgrad_ipeds_levl = (
-    select
-        case
-            when shrdgmr_program in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A') then '1A'
-            when shrdgmr_program in
-                 ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM')
-                then '1B'
-        end
-    from shrdgmr
-    where shrdgmr_degc_code in ('CER0', 'CERT')
-      and shrdgmr_program is not null);
+set dxgrad_ipeds_levl = '1A'
+where dxgrad_dgmr_prgm in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A');
+
+update dxgrad_current
+set dxgrad_ipeds_levl = '1B'
+where dxgrad_dgmr_prgm in ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM');
 
 
 -- G-18 --------------------------------------------------------------------------------------------
