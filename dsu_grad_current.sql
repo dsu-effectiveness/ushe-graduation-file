@@ -1,41 +1,9 @@
-----------------------------------------------------------------------------------------------------
--- Create and Define Variables.                                                                   --
-----------------------------------------------------------------------------------------------------
 
--- Make sure all the records in the dxgrad_current table are in the dxgrad_all table first.
-/* SELECT *
-   FROM   dxgrad_current
-   WHERE  dxgrad_pidm||dxgrad_dgmr_prgm NOT IN ( SELECT dxgrad_pidm||dxgrad_dgmr_prgm FROM dxgrad_all);
-*/
+/***************************************************************************************************
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+***************************************************************************************************/
 
-set verify off;
-
-undefine v_acyr;
-undefine v_gradstart;
-undefine v_gradend;
-undefine v_term_end;
-
-    -- Manual Variables -----------------------------------------------------------------------------
-    -- Set these before running the script.
-
-    -- Academic Year:
-    -- Set this variable to the academic year in which the students graduated.
-    -- Currently broken, just copy/replace all instances of '1920' for the time being...
-define v_acyr = '1920';
-
-    -- Automatic Variables --------------------------------------------------------------------------
-    -- Do not modify these variables. 
-
-    -- Lookup Date:
-    -- This variable is set to the date whose data you are wanting to pull. Defaults to Today.
-define v_gradstart = ('30-JUN-'||substr('1920',0,2));
-
-    -- USHE Year:
-    -- This variable is set to the USHE Academic Year for the current reporting term.
-define v_gradend =  ('01-JUL-'||substr('1920',2,2));
-
-define v_term_end = '20'||substr('1920',3,2)||'20';
-    
  ----------------------------------------------------------------------------------------------------
  -- Create Backup Tables.                                                                          --
  ----------------------------------------------------------------------------------------------------
@@ -181,7 +149,7 @@ insert into dxgrad_current
       and shrdgmr_degc_code = stvdegc_code
       and shrdgmr_degs_code = 'AW'
       and spriden_change_ind is null
-      and shrdgmr_grad_date > to_date(v_gradstart) < to_date(v_gradend) -- change every year
+      and shrdgmr_grad_date > to_date(:gradstart) < to_date(:gradend) -- change every year
 );
 
 -- G-02 --------------------------------------------------------------------------------------------
@@ -918,8 +886,8 @@ set dxgrad_ipeds_levl = (
     where dx.dxgrad_pidm = s1.shrdgmr_pidm
       and dx.dxgrad_dgmr_prgm = s1.shrdgmr_program
       and dx.dxgrad_levl_code = s1.shrdgmr_levl_code
-      and shrdgmr_grad_date > to_date(v_gradstart)
-      and shrdgmr_grad_date < to_date(v_gradend));
+      and shrdgmr_grad_date > to_date(:gradstart)
+      and shrdgmr_grad_date < to_date(:gradend));
 
 -- Updates IPEDS Level if program is missing from (smbpgen)
 update dxgrad_current
@@ -1626,8 +1594,8 @@ where dxgrad_country_origin <> 'US'
 delete
     -- SELECT *
 from dxgrad_current
-where dxgrad_dsugrad_dt < to_date(v_gradstart) -- update each year
-   or dxgrad_dsugrad_dt > to_date(v_gradend);
+where dxgrad_dsugrad_dt < to_date(:gradstart) -- update each year
+   or dxgrad_dsugrad_dt > to_date(:gradend);
 -- update each year
 --
 
