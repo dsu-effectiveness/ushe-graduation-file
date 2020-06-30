@@ -1614,8 +1614,6 @@ where dxgrad_state_origin is null;
 \**************************************************************************************************/
 
 ----------------------------------------------------------------------------------------------------
--- UPDATES: 06.01.2015: G-17 | USHE removed leading zeros from numbers 1-9 to match IPEDS format.
-
 select
     dxgrad_inst as g_inst,                                                                                  -- G-01
     case when LENGTH(dxgrad_ssn) <> '9' then lpad(dxgrad_ssn, 8, '0') else to_char(dxgrad_ssn) end as g_id, -- G-02
@@ -1643,7 +1641,7 @@ select
     lpad(nvl(to_char(dxgrad_other_hrs), '0000'), 4, '0') as g_hrs_other,                                    -- G-14 - must be 4 digits
     lpad(nvl(to_char(dxgrad_remed_hrs), '0000'), 4, '0') as g_remedial_hrs,                                 -- G-15 - must be 4 digits
     dxgrad_prev_degr as g_prev_deg_type,                                                                    -- G-16
-    ltrim(to_number(dxgrad_ipeds_levl)) as g_ipeds,                                                         -- G-17
+    dxgrad_ipeds_levl as g_ipeds,                                                                           -- G-17
     nvl(lpad(to_char(dxgrad_req_hrs), 3, '0'), '000') as g_req_hrs_deg,                                     -- G-18 - must be 3 digits
     dxgrad_hs_code as g_high_school,                                                                        -- G-19
     dxgrad_ssid as g_ssid,                                                                                  -- G-20
