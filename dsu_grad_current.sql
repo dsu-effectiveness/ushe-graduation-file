@@ -1,21 +1,19 @@
-
 /***************************************************************************************************
--- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
-                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '01-JUL-19'
+                  :gradend = 'DD-MMM-YY' i.e '30-JUN-20'
 ***************************************************************************************************/
 
- ----------------------------------------------------------------------------------------------------
- -- Create Backup Tables.                                                                          --
- ----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------
+-- Create Backup Tables.                                                                          --
+----------------------------------------------------------------------------------------------------
 
-    -- Note: this step is only performed once a year.
-    -- RENAME dxgrad_current TO dxgrad_bk||to_char(to_date(TRUNCATE(SYSDATE),'MMDDYY'));
+-- Note: this step is only performed once a year.
+-- RENAME dxgrad_current TO dxgrad_bk||to_char(to_date(TRUNCATE(SYSDATE),'MMDDYY'));
 
- ----------------------------------------------------------------------------------------------------
- -- Drop / Create New Tables.                                                                      --
- ----------------------------------------------------------------------------------------------------
-
- ----------------------------------------------------------------------------------------------------------------------------------- total awards is 2309, fewer students
+----------------------------------------------------------------------------------------------------
+-- Drop / Create New Tables.                                                                      --
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------- total awards is 2309, fewer students
 drop table dxgrad_current;
 create table dxgrad_current
 (
@@ -149,7 +147,7 @@ insert into dxgrad_current
       and shrdgmr_degc_code = stvdegc_code
       and shrdgmr_degs_code = 'AW'
       and spriden_change_ind is null
-      and shrdgmr_grad_date > to_date(:gradstart) < to_date(:gradend) -- change every year
+      and shrdgmr_grad_date BETWEEN to_date(:gradstart) AND to_date(:gradend) -- change every year
 );
 
 -- G-02 --------------------------------------------------------------------------------------------
@@ -464,26 +462,7 @@ where shrdgmr_pidm = spriden_pidm
 update dxgrad_current
 set dxgrad_cipc_code = (
     select lpad(stvmajr_cipc_code, 6, '0') from stvmajr, shrdgmr where stvmajr_code = shrdgmr_majr_code_1
---              SELECT lpad(cipc_code,6,'0')
---              FROM   dsc_programs_all
---              WHERE  acyr_code = '1920'
---              AND    (YEAR_END = 0 OR YEAR_END > 20||substr('1920',0,2))
---              AND    prgm_code = dxgrad_dgmr_prgm
---              GROUP  BY cipc_code
 );
-
---
-
--- Fetch any remaining CIP Codes using STVMAJR
---     UPDATE dxgrad_current
---     SET    dxgrad_cipc_code =
---            (
---              SELECT lpad(stvmajr_cipc_code,6,'0')
---              FROM   stvmajr
---              WHERE  stvmajr_code = dxgrad_grad_majr
---            )
---     WHERE  dxgrad_cipc_code IS NULL;
---
 
 -- This query checks for null CIP Codes as there should always be a CIP Code.
 select
@@ -1168,22 +1147,9 @@ set dxgrad_ushe_term = case substr(dxgrad_term_code_grad, 5, 1)
 
 update dxgrad_current
 set dxgrad_ushe_majr_desc = (
-    select ciptitle
-    from ushe_ref_cip2010
-    where cip_code = dxgrad_cipc_code);
-
-/* update use this and update perkins indicator from this table on Monday.com
-select *
-from stvcipc;
-
- */
-
-
---           
---    UPDATE dxgrad_current 
---    SET    dxgrad_ushe_majr_desc = 'General Education'
---    WHERe  dxgrad_dgmr_prgm      = 'CERT-GENED';
---    --
+    select stvcipc_desc
+    from stvcipc
+    where stvcipc_code = dxgrad_cipc_code);
 
 -- DSU - Age ---------------------------------------------------------------------------------------
 -- ELEMENT NAME: Age
