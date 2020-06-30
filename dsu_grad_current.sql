@@ -918,32 +918,29 @@ set dxgrad_ipeds_levl = (
     where dx.dxgrad_pidm = s1.shrdgmr_pidm
       and dx.dxgrad_dgmr_prgm = s1.shrdgmr_program
       and dx.dxgrad_levl_code = s1.shrdgmr_levl_code
-      and shrdgmr_grad_date > to_date('30-JUN-19')
-      and shrdgmr_grad_date < to_date('01-JUL-20'));
+      and shrdgmr_grad_date > to_date(v_gradstart)
+      and shrdgmr_grad_date < to_date(v_gradend));
 
- -- Updates IPEDS Level if program is missing from (smbpgen)
-    update dxgrad_current
-    set    dxgrad_ipeds_levl = decode
-           (
-             dxgrad_degc_code,
-          -- |    02    | |    03    | |    05     |     07     | --
-              'CER1','02', 'AA',  '03', 'BA',  '05', 'MACC','07',
-                           'AC',  '03', 'BS',  '05',
-                           'AB',  '03', 'BSN', '05',
-                           'AS',  '03', 'BIS', '05',
-                           'AAS', '03', 'BFA', '05',
-                           'APE', '03'
-           ) where dxgrad_ipeds_levl is null;
+-- Updates IPEDS Level if program is missing from (smbpgen)
+update dxgrad_current
+set dxgrad_ipeds_levl = decode(dxgrad_degc_code, 'CER1', '02', 'AA', '03', 'BA', '05', 'MACC', '07', 'AC', '03', 'BS',
+                               '05', 'AB', '03', 'BSN', '05', 'AS', '03', 'BIS', '05', 'AAS', '03', 'BFA', '05', 'APE',
+                               '03')
+where dxgrad_ipeds_levl is null;
 
-          select *
-from
-
-
-
-/* Need to update Certificates 1A and 1B by program code
-UPDATE dxgrad_current
-SET dxgrad_ipeds_levl = (select )
-*/
+-- Updates IPEDS Level Certificates to conform with IPEDS reporting
+update dxgrad_current
+set dxgrad_ipeds_levl = (
+    select
+        case
+            when shrdgmr_program in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A') then '1A'
+            when shrdgmr_program in
+                 ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM')
+                then '1B'
+        end
+    from shrdgmr
+    where shrdgmr_degc_code in ('CER0', 'CERT')
+      and shrdgmr_program is not null);
 
 
 -- G-18 --------------------------------------------------------------------------------------------
@@ -973,21 +970,18 @@ set dxgrad_req_hrs = (
                on s2.smbpgen_program = s1.smbpgen_program and s2.max_smbpgen_term_code_eff = s1.smbpgen_term_code_eff
     where dx.dxgrad_dgmr_prgm = s1.smbpgen_program);
 
-    UPDATE dxgrad_current
-    SET    dxgrad_req_hrs =
-           (
-             SELECT HRS_THIS_YR --nts::replace with variable.
-             FROM   dsc_programs_all
-             WHERE  acyr_code = '1920'
-             AND    dxgrad_dgmr_prgm = prgm_code
-             AND    (
-                      dxgrad_degc_code = degc_code
-                      OR
-                      dxgrad_grad_majr = majr_code
-                    )
-             AND    ROWNUM = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
+update dxgrad_current
+set dxgrad_req_hrs = (
+    select
+        hrs_this_yr --nts::replace with variable.
+    from dsc_programs_all
+    where acyr_code = '1920'
+      and dxgrad_dgmr_prgm = prgm_code
+      and (dxgrad_degc_code = degc_code or dxgrad_grad_majr = majr_code)
+      and rownum = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
 
-           ) WHERE dxgrad_req_hrs is null;
+)
+where dxgrad_req_hrs is null;
 
 --
 
