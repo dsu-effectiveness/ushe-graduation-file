@@ -256,8 +256,16 @@ where dxgrad_country_origin <> 'US'
 -- Set Non-Resident Aliens where spbpers_citz_code = '2'
 update dxgrad_current
 set dxgrad_ethn_n = 'N'
-where EXISTS(select spbpers_citz_code from spbpers where spbpers_pidm = dxgrad_pidm and spbpers_citz_code = '2')
+where EXISTS(select
+                 spbpers_citz_code
+             from spbpers, gorvisa
+             where spbpers_pidm = dxgrad_pidm
+               and gorvisa_pidm = dxgrad_pidm
+               and spbpers_citz_code = '2'
+               and gorvisa_visa_expire_date is null)
   and dxgrad_ethn_n is null;
+
+
 --
 
 update dxgrad_current
@@ -944,7 +952,9 @@ select
     dxgrad_cipc_code as "Cipc ",
     dxgrad_req_hrs as "Req Hrs"
 from dxgrad_current
-group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs;
+group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs
+;
+
 
 /* Now CHECK FOR NULLS.
    Aug08 found one stu with AAS-GCOM DGMR_PRGM and in dsc_programs
@@ -1439,6 +1449,16 @@ update dxgrad_current
 set dxgrad_initial_degint = '1'
 where dxgrad_degc_code like 'C%'
   and dxgrad_initial_degint is null;
+
+
+update dxgrad_current
+set dxgrad_initial_degint = '7'
+where dxgrad_degc_code like 'M%'
+  and dxgrad_initial_degint is null;
+
+
+
+commit;
 --
 
 -- DSU-Initial-Sport -------------------------------------------------------------------------------
