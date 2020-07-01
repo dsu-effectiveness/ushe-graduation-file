@@ -1,6 +1,6 @@
 /***************************************************************************************************
--- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '01-JUL-19'
-                  :gradend = 'DD-MMM-YY' i.e '30-JUN-20'
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
 ***************************************************************************************************/
 
 ----------------------------------------------------------------------------------------------------
@@ -874,9 +874,12 @@ set dxgrad_ipeds_levl = (
 
 -- Updates IPEDS Level if program is missing from (smbpgen)
 update dxgrad_current
-set dxgrad_ipeds_levl = decode(dxgrad_degc_code, 'CER1', '02', 'AA', '03', 'BA', '05', 'MACC', '07', 'AC', '03', 'BS',
-                               '05', 'AB', '03', 'BSN', '05', 'AS', '03', 'BIS', '05', 'AAS', '03', 'BFA', '05', 'APE',
-                               '03')
+set dxgrad_ipeds_levl = case
+                            when dxgrad_degc_code = 'CER1' then '02'
+                            when dxgrad_degc_code like 'A%' then '03'
+                            when dxgrad_degc_code like 'B%' then '05'
+                            when dxgrad_degc_code like 'M%' then '07'
+                        end
 where dxgrad_ipeds_levl is null;
 
 -- Updates IPEDS Level Certificates to conform with IPEDS reporting
@@ -886,7 +889,9 @@ where dxgrad_dgmr_prgm in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A');
 
 update dxgrad_current
 set dxgrad_ipeds_levl = '1B'
-where dxgrad_dgmr_prgm in ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM');
+where dxgrad_dgmr_prgm in
+      ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM', 'CERT-SCCM',
+       'CERT-MMJ', 'CERT-SRM', 'CERT-PWRT', 'CERT-SM', 'CERT-DSGN', 'CERT-BIOT', 'CERT-CPFD');
 
 
 -- G-18 --------------------------------------------------------------------------------------------
@@ -1660,6 +1665,7 @@ from dxgrad_current;
 
 
 commit;
+
 
 -- If all looks good, COMMIT;
 -- Save the pipe-delimited data as dsc-grad-YY.txt where YY = AY End
