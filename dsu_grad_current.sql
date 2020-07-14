@@ -574,8 +574,9 @@ set dxgrad_trans_hrs = (
       and shrtrit_sbgi_code = stvsbgi_code
       and stvsbgi_code < '999999'
       and stvsbgi_srce_ind is not null
-    group by shrtgpa_pidm)
-where dxgrad_trans_hrs is null;
+    group by shrtgpa_pidm);
+-- where dxgrad_trans_hrs is null;
+
 
 
 -- G-13 --------------------------------------------------------------------------------------------
