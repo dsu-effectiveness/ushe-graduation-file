@@ -562,43 +562,21 @@ where dxgrad_gpa is null;
 -- Calculate and populate transfer hours (if any) from SHTRGPA
 update dxgrad_current
 set dxgrad_trans_hrs = (
---              SELECT round(sum(shrtgpa_hours_earned),1) * 10
---              FROM   shrtgpa, shrtrit
---              WHERE  shrtgpa_levl_code    = dxgrad_levl_code
---              AND    shrtgpa_trit_seq_no  = shrtrit_seq_no
---              AND    shrtgpa_pidm         = shrtrit_pidm
---              AND    shrtgpa_pidm         = dxgrad_pidm
---              AND    shrtgpa_gpa_type_ind = 'T'
---              AND    shrtgpa_term_code   <= dxgrad_term_code_grad
---              AND    shrtrit_sbgi_code  NOT LIKE 'CLEP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'CLP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'FL%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'VERT%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'AP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'MIL%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'MLASP%'
---              GROUP  BY shrtgpa_pidm
     select
         round(sum(shrtgpa_hours_earned), 1) * 10
     from shrtgpa, shrtrit, stvsbgi
-    where shrtgpa_levl_code = dxgrad_levl_code
+ where shrtgpa_levl_code = dxgrad_levl_code
       and shrtgpa_trit_seq_no = shrtrit_seq_no
       and shrtgpa_pidm = shrtrit_pidm
       and shrtgpa_pidm = dxgrad_pidm
       and shrtgpa_gpa_type_ind = 'T'
       and shrtgpa_term_code <= dxgrad_term_code_grad
       and shrtrit_sbgi_code = stvsbgi_code
-      and stvsbgi_code > '999999'
-      and stvsbgi_srce_ind is null
-      and stvsbgi_code not in ('DSU001', 'ELC')
+      and stvsbgi_code < '999999'
+      and stvsbgi_srce_ind is not null
     group by shrtgpa_pidm)
 where dxgrad_trans_hrs is null;
 
--- ones' that start with E with numbers after them.  ELC is not transfer credit.  Source indicator should be null
--- srce_ind
-
-
---
 
 -- G-13 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Total Hours at Graduation
@@ -941,6 +919,8 @@ set dxgrad_req_hrs = (
 
 )
 where dxgrad_req_hrs is null;
+
+
 
 --
 
