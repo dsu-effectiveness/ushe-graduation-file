@@ -1198,16 +1198,20 @@ set dxgrad_majr_conc2 = (
 -- FIELD NAME:   dxgrad_majr_conc1, dxgrad_majr_conc2
 /* DEFINITION:   Major Description is not used by USHE.                                           */
 ----------------------------------------------------------------------------------------------------
+/*
+ First uses major description from dsc_pgroams_current.  Then looks at STVMAJR.
+ */
+UPDATE dxgrad_current
+   SET dxgrad_majr_desc = (SELECT majr_desc
+                             FROM dsc_programs_current
+                            WHERE prgm_code = dxgrad_dgmr_prgm);
 
--- Set the major description by majr_code using STVMAJR
-update dxgrad_current
-set dxgrad_majr_desc = (
-    select majr_desc from dsc_programs_current where prgm_code = dxgrad_dgmr_prgm);
+UPDATE dxgrad_current
+   SET dxgrad_majr_desc = (SELECT stvmajr_desc
+                             FROM stvmajr
+                            WHERE dxgrad_grad_majr = stvmajr_code)
+ WHERE dxgrad_majr_desc IS NULL;
 
-update dxgrad_current
-set dxgrad_majr_desc = 'General Education'
-where dxgrad_dgmr_prgm = 'CERT-GENED';
---
 
 -- DSU - HS Grad Date ------------------------------------------------------------------------------
 -- ELEMENT NAME: High School Grad Date
