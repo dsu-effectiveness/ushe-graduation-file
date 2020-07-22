@@ -1,53 +1,19 @@
+/***************************************************************************************************
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+***************************************************************************************************/
+
 ----------------------------------------------------------------------------------------------------
--- Create and Define Variables.                                                                   --
+-- Create Backup Tables.                                                                          --
 ----------------------------------------------------------------------------------------------------
 
--- Make sure all the records in the dxgrad_current table are in the dxgrad_all table first.
-/* SELECT *
-   FROM   dxgrad_current
-   WHERE  dxgrad_pidm||dxgrad_dgmr_prgm NOT IN ( SELECT dxgrad_pidm||dxgrad_dgmr_prgm FROM dxgrad_all);
-*/
+-- Note: this step is only performed once a year.
+-- RENAME dxgrad_current TO dxgrad_bk||to_char(to_date(TRUNCATE(SYSDATE),'MMDDYY'));
 
-set verify off;
-
-undefine v_acyr;
-undefine v_gradstart;
-undefine v_gradend;
-undefine v_term_end;
-
-    -- Manual Variables -----------------------------------------------------------------------------
-    -- Set these before running the script.
-
-    -- Academic Year:
-    -- Set this variable to the academic year in which the students graduated.
-    -- Currently broken, just copy/replace all instances of '1920' for the time being...
-define v_acyr = '1920';
-
-    -- Automatic Variables --------------------------------------------------------------------------
-    -- Do not modify these variables. 
-
-    -- Lookup Date:
-    -- This variable is set to the date whose data you are wanting to pull. Defaults to Today.
-define v_gradstart = ('30-JUN-'||substr('1920',0,2));
-
-    -- USHE Year:
-    -- This variable is set to the USHE Academic Year for the current reporting term.
-define v_gradend =  ('01-JUL-'||substr('1920',2,2));
-
-define v_term_end = '20'||substr('1920',3,2)||'20';
-    
- ----------------------------------------------------------------------------------------------------
- -- Create Backup Tables.                                                                          --
- ----------------------------------------------------------------------------------------------------
-
-    -- Note: this step is only performed once a year.
-    -- RENAME dxgrad_current TO dxgrad_bk||to_char(to_date(TRUNCATE(SYSDATE),'MMDDYY'));
-
- ----------------------------------------------------------------------------------------------------
- -- Drop / Create New Tables.                                                                      --
- ----------------------------------------------------------------------------------------------------
-
- ----------------------------------------------------------------------------------------------------------------------------------- total awards is 2309, fewer students
+----------------------------------------------------------------------------------------------------
+-- Drop / Create New Tables.                                                                      --
+----------------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------------------------------------------- total awards is 2309, fewer students
 drop table dxgrad_current;
 create table dxgrad_current
 (
@@ -181,7 +147,7 @@ insert into dxgrad_current
       and shrdgmr_degc_code = stvdegc_code
       and shrdgmr_degs_code = 'AW'
       and spriden_change_ind is null
-      and shrdgmr_grad_date > to_date(v_gradstart) < to_date(v_gradend) -- change every year
+      and shrdgmr_grad_date between to_date(:gradstart) and to_date(:gradend) -- change every year
 );
 
 -- G-02 --------------------------------------------------------------------------------------------
@@ -290,8 +256,16 @@ where dxgrad_country_origin <> 'US'
 -- Set Non-Resident Aliens where spbpers_citz_code = '2'
 update dxgrad_current
 set dxgrad_ethn_n = 'N'
-where EXISTS(select spbpers_citz_code from spbpers where spbpers_pidm = dxgrad_pidm and spbpers_citz_code = '2')
+where EXISTS(select
+                 spbpers_citz_code
+             from spbpers, gorvisa
+             where spbpers_pidm = dxgrad_pidm
+               and gorvisa_pidm = dxgrad_pidm
+               and spbpers_citz_code = '2'
+               and gorvisa_visa_expire_date is null)
   and dxgrad_ethn_n is null;
+
+
 --
 
 update dxgrad_current
@@ -493,29 +467,14 @@ where shrdgmr_pidm = spriden_pidm
 ----------------------------------------------------------------------------------------------------
 
 -- Fetch CIP Codes from CIP2010 Table
+-- Fetch CIP Codes from CIP2010 Table
 update dxgrad_current
-set dxgrad_cipc_code = (
-    select lpad(stvmajr_cipc_code, 6, '0') from stvmajr, shrdgmr where stvmajr_code = shrdgmr_majr_code_1
---              SELECT lpad(cipc_code,6,'0')
---              FROM   dsc_programs_all
---              WHERE  acyr_code = '1920'
---              AND    (YEAR_END = 0 OR YEAR_END > 20||substr('1920',0,2))
---              AND    prgm_code = dxgrad_dgmr_prgm
---              GROUP  BY cipc_code
-);
-
---
-
--- Fetch any remaining CIP Codes using STVMAJR
---     UPDATE dxgrad_current
---     SET    dxgrad_cipc_code =
---            (
---              SELECT lpad(stvmajr_cipc_code,6,'0')
---              FROM   stvmajr
---              WHERE  stvmajr_code = dxgrad_grad_majr
---            )
---     WHERE  dxgrad_cipc_code IS NULL;
---
+set dxgrad_cipc_code = (select distinct stvmajr_cipc_code
+from stvmajr, shrdgmr
+    where stvmajr_code = shrdgmr_majr_code_1
+      and dxgrad_pidm = shrdgmr_pidm
+      and dxgrad_grad_majr = stvmajr_code
+      and dxgrad_degc_code = shrdgmr_degc_code);
 
 -- This query checks for null CIP Codes as there should always be a CIP Code.
 select
@@ -603,43 +562,22 @@ where dxgrad_gpa is null;
 -- Calculate and populate transfer hours (if any) from SHTRGPA
 update dxgrad_current
 set dxgrad_trans_hrs = (
---              SELECT round(sum(shrtgpa_hours_earned),1) * 10
---              FROM   shrtgpa, shrtrit
---              WHERE  shrtgpa_levl_code    = dxgrad_levl_code
---              AND    shrtgpa_trit_seq_no  = shrtrit_seq_no
---              AND    shrtgpa_pidm         = shrtrit_pidm
---              AND    shrtgpa_pidm         = dxgrad_pidm
---              AND    shrtgpa_gpa_type_ind = 'T'
---              AND    shrtgpa_term_code   <= dxgrad_term_code_grad
---              AND    shrtrit_sbgi_code  NOT LIKE 'CLEP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'CLP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'FL%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'VERT%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'AP%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'MIL%'
---              AND    shrtrit_sbgi_code  NOT LIKE 'MLASP%'
---              GROUP  BY shrtgpa_pidm
     select
         round(sum(shrtgpa_hours_earned), 1) * 10
     from shrtgpa, shrtrit, stvsbgi
-    where shrtgpa_levl_code = dxgrad_levl_code
+ where shrtgpa_levl_code = dxgrad_levl_code
       and shrtgpa_trit_seq_no = shrtrit_seq_no
       and shrtgpa_pidm = shrtrit_pidm
       and shrtgpa_pidm = dxgrad_pidm
       and shrtgpa_gpa_type_ind = 'T'
       and shrtgpa_term_code <= dxgrad_term_code_grad
       and shrtrit_sbgi_code = stvsbgi_code
-      and stvsbgi_code > '999999'
-      and stvsbgi_srce_ind is null
-      and stvsbgi_code not in ('DSU001', 'ELC')
-    group by shrtgpa_pidm)
-where dxgrad_trans_hrs is null;
-
--- ones' that start with E with numbers after them.  ELC is not transfer credit.  Source indicator should be null
--- srce_ind
+      and stvsbgi_code < '999999'
+      and stvsbgi_srce_ind is not null
+    group by shrtgpa_pidm);
+-- where dxgrad_trans_hrs is null;
 
 
---
 
 -- G-13 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Total Hours at Graduation
@@ -887,7 +825,7 @@ set dxgrad_prev_degr = (
 /* DEFINITION:   The Award Level codes that correspond with the IPEDS Completion Survey.          */
 ----------------------------------------------------------------------------------------------------
 
--- Set IPEDS Level based on degc_code
+-- Set IPEDS Level based on level code and program credit hours
 
 update dxgrad_current dx
 set dxgrad_ipeds_levl = (
@@ -905,11 +843,11 @@ set dxgrad_ipeds_levl = (
             when shrdgmr_levl_code = 'UG' then case
                                                    when smbpgen_req_credits_overall between 1 and 8 then '1A'
                                                    when smbpgen_req_credits_overall between 9 and 29 then '1B'
-                                                   when smbpgen_req_credits_overall between 30 and 59 then '2'
-                                                   when smbpgen_req_credits_overall between 60 and 119 then '3'
-                                                   when smbpgen_req_credits_overall > 119 then '5'
+                                                   when smbpgen_req_credits_overall between 30 and 59 then '02'
+                                                   when smbpgen_req_credits_overall between 60 and 119 then '03'
+                                                   when smbpgen_req_credits_overall > 119 then '05'
                                                end
-            when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '7'
+            when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '07'
         end ipeds_awrd_lvl_2
     from shrdgmr s1
     left join smbpgen s2 on s2.smbpgen_program = s1.shrdgmr_program
@@ -918,8 +856,30 @@ set dxgrad_ipeds_levl = (
     where dx.dxgrad_pidm = s1.shrdgmr_pidm
       and dx.dxgrad_dgmr_prgm = s1.shrdgmr_program
       and dx.dxgrad_levl_code = s1.shrdgmr_levl_code
-      and shrdgmr_grad_date > to_date(v_gradstart)
-      and shrdgmr_grad_date < to_date(v_gradend));
+      and shrdgmr_grad_date > to_date(:gradstart)
+      and shrdgmr_grad_date < to_date(:gradend));
+
+-- Updates IPEDS Level if program is missing from (smbpgen)
+update dxgrad_current
+set dxgrad_ipeds_levl = case
+                            when dxgrad_degc_code = 'CER1' then '02'
+                            when dxgrad_degc_code like 'A%' then '03'
+                            when dxgrad_degc_code like 'B%' then '05'
+                            when dxgrad_degc_code like 'M%' then '07'
+                        end
+where dxgrad_ipeds_levl is null;
+
+-- Updates IPEDS Level Certificates to conform with IPEDS reporting
+update dxgrad_current
+set dxgrad_ipeds_levl = '1A'
+where dxgrad_dgmr_prgm in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A');
+
+update dxgrad_current
+set dxgrad_ipeds_levl = '1B'
+where dxgrad_dgmr_prgm in
+      ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM', 'CERT-SCCM',
+       'CERT-MMJ', 'CERT-SRM', 'CERT-PWRT', 'CERT-SM', 'CERT-DSGN', 'CERT-BIOT', 'CERT-CPFD');
+
 
 -- G-18 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Required Hours for Degree
@@ -948,6 +908,20 @@ set dxgrad_req_hrs = (
                on s2.smbpgen_program = s1.smbpgen_program and s2.max_smbpgen_term_code_eff = s1.smbpgen_term_code_eff
     where dx.dxgrad_dgmr_prgm = s1.smbpgen_program);
 
+update dxgrad_current
+set dxgrad_req_hrs = (
+    select
+        hrs_this_yr --nts::replace with variable.
+    from dsc_programs_all
+    where acyr_code = '1920'
+      and dxgrad_dgmr_prgm = prgm_code
+      and (dxgrad_degc_code = degc_code or dxgrad_grad_majr = majr_code)
+      and rownum = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
+
+)
+where dxgrad_req_hrs is null;
+
+
 
 --
 
@@ -959,7 +933,9 @@ select
     dxgrad_cipc_code as "Cipc ",
     dxgrad_req_hrs as "Req Hrs"
 from dxgrad_current
-group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs;
+group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs
+;
+
 
 /* Now CHECK FOR NULLS.
    Aug08 found one stu with AAS-GCOM DGMR_PRGM and in dsc_programs
@@ -1166,16 +1142,9 @@ set dxgrad_ushe_term = case substr(dxgrad_term_code_grad, 5, 1)
 
 update dxgrad_current
 set dxgrad_ushe_majr_desc = (
-    select ciptitle
-    from ushe_ref_cip2010
-    where cip_code = dxgrad_cipc_code);
-
-
---           
---    UPDATE dxgrad_current 
---    SET    dxgrad_ushe_majr_desc = 'General Education'
---    WHERe  dxgrad_dgmr_prgm      = 'CERT-GENED';
---    --
+    select stvcipc_desc
+    from stvcipc
+    where stvcipc_code = dxgrad_cipc_code);
 
 -- DSU - Age ---------------------------------------------------------------------------------------
 -- ELEMENT NAME: Age
@@ -1229,16 +1198,20 @@ set dxgrad_majr_conc2 = (
 -- FIELD NAME:   dxgrad_majr_conc1, dxgrad_majr_conc2
 /* DEFINITION:   Major Description is not used by USHE.                                           */
 ----------------------------------------------------------------------------------------------------
+/*
+ First uses major description from dsc_pgroams_current.  Then looks at STVMAJR.
+ */
+UPDATE dxgrad_current
+   SET dxgrad_majr_desc = (SELECT majr_desc
+                             FROM dsc_programs_current
+                            WHERE prgm_code = dxgrad_dgmr_prgm);
 
--- Set the major description by majr_code using STVMAJR
-update dxgrad_current
-set dxgrad_majr_desc = (
-    select majr_desc from dsc_programs_current where prgm_code = dxgrad_dgmr_prgm);
+UPDATE dxgrad_current
+   SET dxgrad_majr_desc = (SELECT stvmajr_desc
+                             FROM stvmajr
+                            WHERE dxgrad_grad_majr = stvmajr_code)
+ WHERE dxgrad_majr_desc IS NULL;
 
-update dxgrad_current
-set dxgrad_majr_desc = 'General Education'
-where dxgrad_dgmr_prgm = 'CERT-GENED';
---
 
 -- DSU - HS Grad Date ------------------------------------------------------------------------------
 -- ELEMENT NAME: High School Grad Date
@@ -1461,6 +1434,16 @@ update dxgrad_current
 set dxgrad_initial_degint = '1'
 where dxgrad_degc_code like 'C%'
   and dxgrad_initial_degint is null;
+
+
+update dxgrad_current
+set dxgrad_initial_degint = '7'
+where dxgrad_degc_code like 'M%'
+  and dxgrad_initial_degint is null;
+
+
+
+commit;
 --
 
 -- DSU-Initial-Sport -------------------------------------------------------------------------------
@@ -1586,8 +1569,8 @@ where dxgrad_country_origin <> 'US'
 delete
     -- SELECT *
 from dxgrad_current
-where dxgrad_dsugrad_dt < to_date(v_gradstart) -- update each year
-   or dxgrad_dsugrad_dt > to_date(v_gradend);
+where dxgrad_dsugrad_dt < to_date(:gradstart) -- update each year
+   or dxgrad_dsugrad_dt > to_date(:gradend);
 -- update each year
 --
 
@@ -1641,8 +1624,6 @@ where dxgrad_state_origin is null;
 \**************************************************************************************************/
 
 ----------------------------------------------------------------------------------------------------
--- UPDATES: 06.01.2015: G-17 | USHE removed leading zeros from numbers 1-9 to match IPEDS format.
-
 select
     dxgrad_inst as g_inst,                                                                                  -- G-01
     case when LENGTH(dxgrad_ssn) <> '9' then lpad(dxgrad_ssn, 8, '0') else to_char(dxgrad_ssn) end as g_id, -- G-02
@@ -1670,7 +1651,7 @@ select
     lpad(nvl(to_char(dxgrad_other_hrs), '0000'), 4, '0') as g_hrs_other,                                    -- G-14 - must be 4 digits
     lpad(nvl(to_char(dxgrad_remed_hrs), '0000'), 4, '0') as g_remedial_hrs,                                 -- G-15 - must be 4 digits
     dxgrad_prev_degr as g_prev_deg_type,                                                                    -- G-16
-    ltrim(to_number(dxgrad_ipeds_levl)) as g_ipeds,                                                         -- G-17
+    dxgrad_ipeds_levl as g_ipeds,                                                                           -- G-17
     nvl(lpad(to_char(dxgrad_req_hrs), 3, '0'), '000') as g_req_hrs_deg,                                     -- G-18 - must be 3 digits
     dxgrad_hs_code as g_high_school,                                                                        -- G-19
     dxgrad_ssid as g_ssid,                                                                                  -- G-20
@@ -1689,6 +1670,7 @@ from dxgrad_current;
 
 
 commit;
+
 
 -- If all looks good, COMMIT;
 -- Save the pipe-delimited data as dsc-grad-YY.txt where YY = AY End
