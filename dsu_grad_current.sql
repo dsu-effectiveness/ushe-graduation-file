@@ -606,11 +606,48 @@ set a.dxgrad_grad_hrs = ( -- Total Hours
                               and shrtgpa_term_code <= dxgrad_term_code_grad
                             group by shrtgpa_pidm) - dxgrad_remed_hrs;
 
+-- Fix CERT-CNA Grad Hours
+UPDATE dxgrad_current
+   SET dxgrad_req_hrs = 4
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+   AND dxgrad_dgmr_prgm = 'CERT-CNA';
+
+-- Fix BS-BU Grad Hours
+UPDATE dxgrad_current
+   SET dxgrad_req_hrs = 120
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+   AND dxgrad_dgmr_prgm = 'BS-BU';
+
+/*
+Manual Fixes: These corrections are being applied because we are finding graduates that have
+earned credits that are less than the required credits for their pursed degree / program.
+Various issues are causing this, hence the below update statement.
+See comments here:
+https://dixiestate-my.sharepoint.com/:x:/r/personal/d00436636_dixie_edu/_layouts/15/Doc.aspx?sourcedoc=%7BC56A5DDB-3CB4-48A3-AA3A-8B1510265857%7D&file=dxgrad_current_grad_rem_fixes_1920.xlsx&action=default&mobileredirect=true
+ */
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 62
+ WHERE dxgrad_pidm = '176016'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 66
+ WHERE dxgrad_pidm = '218609'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 60
+ WHERE dxgrad_pidm = '231103'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 65
+ WHERE dxgrad_pidm = '240547'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
 
 
---
-
--- G-14 --------------------------------------------------------------------------------------------
+-- G-COM14 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Accepted Credit from Other Sources
 -- FIELD NAME:   G_HRS_OTHER
 /* DEFINITION:   Hours from AP credit, CLEP test, Language test, Challenge, Military etc. Hours
@@ -654,22 +691,52 @@ set dxgrad_other_hrs = (
    shrtckn_repeat_course_ind <> 'E' (E = not counted in GPA, I = Repeat counted in GPA) */
 
 -- Calculate and populate remedial hours from SHRTCKG and SHRTCKN
-update dxgrad_current
-set dxgrad_remed_hrs = (
-    select
-        round(sum(shrtckg_credit_hours), 1) * 10
-    from shrtckg, shrtckn
-    where shrtckg_term_code = shrtckn_term_code
-      and shrtckg_tckn_seq_no = shrtckn_seq_no
-      and shrtckg_pidm = shrtckn_pidm
-      and shrtckg_pidm = dxgrad_pidm
-      and shrtckn_subj_code in ('ENGL', 'MATH', 'ESL', 'ESOL')
-      and shrtckn_crse_numb < '1000'
-      and shrtckg_gmod_code not in ('A', 'N')
-      and not shrtckg_grde_code_final in ('I', 'NC', 'F', 'W')
-      and (shrtckn_repeat_course_ind <> 'E' or shrtckn_repeat_course_ind is null)
-      and shrtckn_term_code <= dxgrad_term_code_grad
-    group by shrtckg_pidm);
+
+
+UPDATE dxgrad_current
+    SET    dxgrad_remed_hrs =
+           (SELECT round(sum(shrtckg_credit_hours), 1) * 10
+              FROM shrtckg a,
+                   shrtckn b,
+                   shrgrde c
+             WHERE shrtckg_term_code = shrtckn_term_code
+               AND shrtckg_pidm = shrtckn_pidm
+               AND shrtckg_grde_code_final = shrgrde_code
+               AND shrgrde_levl_code = 'UG'
+               AND shrtckg_pidm = dxgrad_pidm
+               AND shrtckn_subj_code IN ('ENGL', 'MATH', 'ESL', 'ESOL')
+               AND shrtckn_crse_numb < '1000'
+               AND shrtckg_grde_code_final IN (SELECT DISTINCT
+                                                      shrgrde_code
+                                                 FROM shrgrde
+                                                WHERE shrgrde_passed_ind = 'Y')
+               AND (shrtckn_repeat_course_ind <> 'E' OR shrtckn_repeat_course_ind IS NULL)
+               AND shrtckn_term_code <= dxgrad_term_code_grad
+               AND dxgrad_levl_code != 'GR'
+               AND shrtckg_term_code > '199830'
+               AND shrtckg_tckn_seq_no = shrtckn_seq_no
+               AND shrtckg_final_grde_chg_date = (SELECT max(shrtckg_final_grde_chg_date)
+                                            FROM shrtckg a1,
+                                                 shrtckn b1
+                                           WHERE a1.shrtckg_pidm = b1.shrtckn_pidm
+                                             AND a1.shrtckg_term_code = b1.shrtckn_term_code
+                                             AND a1.shrtckg_tckn_seq_no = b1.shrtckn_seq_no
+                                             AND a1.shrtckg_term_code = a.shrtckg_term_code
+                                             AND a1.shrtckg_pidm = a.shrtckg_pidm
+                                             AND b1.shrtckn_crse_numb = b.shrtckn_crse_numb
+                                             AND b1.shrtckn_subj_code = b.shrtckn_subj_code
+                                             AND a1.shrtckg_tckn_seq_no = b1.shrtckn_seq_no)
+             GROUP BY shrtckg_pidm
+           );
+
+/*
+ Setting remaing values to null in order to calculate dxgrad_grad_hrs
+ */
+UPDATE dxgrad_current
+   SET dxgrad_remed_hrs = 0
+ WHERE dxgrad_remed_hrs IS NULL;
+
+
 
 -- G-16 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Previous Degree Type
@@ -848,7 +915,7 @@ set dxgrad_ipeds_levl = (
                                                    when smbpgen_req_credits_overall > 119 then '05'
                                                end
             when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '07'
-        end ipeds_awrd_lvl_2
+        end AS ipeds_awrd_lvl_2
     from shrdgmr s1
     left join smbpgen s2 on s2.smbpgen_program = s1.shrdgmr_program
     inner join cte_max_term_code_eff s3 on s3.pidm = s1.shrdgmr_pidm and s3.shrdgmr_program = s2.smbpgen_program and
@@ -893,6 +960,7 @@ where dxgrad_dgmr_prgm in
 -- data, and query against it with the dxgrad table.
 
 -- Fetch hours for degree from the hrstodegAYAY table where AYAY is the graduating year
+
 update dxgrad_current dx
 set dxgrad_req_hrs = (
     -- gets the max program effective term
@@ -921,20 +989,11 @@ set dxgrad_req_hrs = (
 )
 where dxgrad_req_hrs is null;
 
+update dxgrad_current dx
+set dxgrad_req_hrs = 120
+where dxgrad_dgmr_prgm = 'BS-ACCT';
 
-
---
-
--- Check to make sure no other IPEDS Levels were incorrectly assigned.
-select
-    count(*) as "Count",
-    nvl(dxgrad_ipeds_levl, 'x') as "Level",
-    dxgrad_degc_code as "Degc ",
-    dxgrad_cipc_code as "Cipc ",
-    dxgrad_req_hrs as "Req Hrs"
-from dxgrad_current
-group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs
-;
+COMMIT ;
 
 
 /* Now CHECK FOR NULLS.
@@ -1512,21 +1571,6 @@ where dxgrad_trans_hrs is null;
 --
 
 
-----------------------------------------------------------------------------------------------------
--- Re-Calculate and populate total hours from SHRTGPA minus remedial hours (sometimes the script
--- above does not stick and there are a great number of zeros for grad hours that are fixed by
--- running this script again at the end. A problem to fix another day.
-
-update dxgrad_current a
-set a.dxgrad_grad_hrs = ( -- Total Hours
-                            select
-                                round(sum(shrtgpa_hours_earned), 1) * 10
-                            from shrtgpa
-                            where shrtgpa_pidm = a.dxgrad_pidm
-                              and shrtgpa_levl_code = dxgrad_levl_code
-                              and shrtgpa_term_code <= dxgrad_term_code_grad
-                            group by shrtgpa_pidm) - dxgrad_remed_hrs;
---
 
 -- Re-Fetch county code from SABSUPL table.
 update dxgrad_current
@@ -1730,7 +1774,7 @@ ALTER TABLE dxgrad_all MODIFY dxgrad_ushe_majr_coll VARCHAR(100);
 ALTER TABLE dxgrad_all MODIFY dxgrad_majr_desc VARCHAR(100);
 
 -- Once a year, import _current data into _all tabl e
-CREATE TABLE dxgrad_all_bk10092018 AS SELECT * FROM dxgrad_all;
+CREATE TABLE dxgrad_all_bk07282020 AS SELECT * FROM dxgrad_all;
 
 INSERT INTO dxgrad_all
 (
