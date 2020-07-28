@@ -612,8 +612,42 @@ UPDATE dxgrad_current
  WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
    AND dxgrad_dgmr_prgm = 'CERT-CNA';
 
+-- Fix BS-BU Grad Hours
+UPDATE dxgrad_current
+   SET dxgrad_req_hrs = 120
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+   AND dxgrad_dgmr_prgm = 'BS-BU';
 
--- G-14 --------------------------------------------------------------------------------------------
+/*
+Manual Fixes: These corrections are being applied because we are finding graduates that have
+earned credits that are less than the required credits for their pursed degree / program.
+Various issues are causing this, hence the below update statement.
+See comments here:
+https://dixiestate-my.sharepoint.com/:x:/r/personal/d00436636_dixie_edu/_layouts/15/Doc.aspx?sourcedoc=%7BC56A5DDB-3CB4-48A3-AA3A-8B1510265857%7D&file=dxgrad_current_grad_rem_fixes_1920.xlsx&action=default&mobileredirect=true
+ */
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 62
+ WHERE dxgrad_pidm = '176016'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 66
+ WHERE dxgrad_pidm = '218609'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 60
+ WHERE dxgrad_pidm = '231103'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 65
+ WHERE dxgrad_pidm = '240547'
+   AND dxgrad_dgmr_prgm = 'AS-GENED';
+
+
+-- G-COM14 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Accepted Credit from Other Sources
 -- FIELD NAME:   G_HRS_OTHER
 /* DEFINITION:   Hours from AP credit, CLEP test, Language test, Challenge, Military etc. Hours
@@ -656,13 +690,9 @@ set dxgrad_other_hrs = (
  * 8/6/12 originally used using shrtckn_repeat_sys_ind <> 'M' and should have been using
    shrtckn_repeat_course_ind <> 'E' (E = not counted in GPA, I = Repeat counted in GPA) */
 
-UPDATE dxgrad_current
-   SET dxgrad_remed_hrs = null;
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = null;
-
 -- Calculate and populate remedial hours from SHRTCKG and SHRTCKN
+
+
 UPDATE dxgrad_current
     SET    dxgrad_remed_hrs =
            (SELECT round(sum(shrtckg_credit_hours), 1) * 10
@@ -684,16 +714,18 @@ UPDATE dxgrad_current
                AND shrtckn_term_code <= dxgrad_term_code_grad
                AND dxgrad_levl_code != 'GR'
                AND shrtckg_term_code > '199830'
-               --AND shrtckg_tckn_seq_no = shrtckn_seq_no
-               AND shrtckg_tckn_seq_no = (SELECT max(shrtckg_tckn_seq_no)
+               AND shrtckg_tckn_seq_no = shrtckn_seq_no
+               AND shrtckg_final_grde_chg_date = (SELECT max(shrtckg_final_grde_chg_date)
                                             FROM shrtckg a1,
                                                  shrtckn b1
                                            WHERE a1.shrtckg_pidm = b1.shrtckn_pidm
                                              AND a1.shrtckg_term_code = b1.shrtckn_term_code
+                                             AND a1.shrtckg_tckn_seq_no = b1.shrtckn_seq_no
                                              AND a1.shrtckg_term_code = a.shrtckg_term_code
                                              AND a1.shrtckg_pidm = a.shrtckg_pidm
                                              AND b1.shrtckn_crse_numb = b.shrtckn_crse_numb
-                                             AND b1.shrtckn_subj_code = b.shrtckn_subj_code)
+                                             AND b1.shrtckn_subj_code = b.shrtckn_subj_code
+                                             AND a1.shrtckg_tckn_seq_no = b1.shrtckn_seq_no)
              GROUP BY shrtckg_pidm
            );
 
@@ -703,43 +735,6 @@ UPDATE dxgrad_current
 UPDATE dxgrad_current
    SET dxgrad_remed_hrs = 0
  WHERE dxgrad_remed_hrs IS NULL;
-
-
-
-
-
-
--- update dxgrad_current
--- set dxgrad_remed_hrs = (
---     select
---         round(sum(a.shrtckg_credit_hours), 1) * 10
---     from shrtckg a, shrtckn b
---     where a.shrtckg_term_code = b.shrtckn_term_code
---       and a.shrtckg_tckn_seq_no = (select max(shrtckg_tckn_seq_no)
---                                    from shrtckg a1, shrtckn b1
---                                   where  a1.shrtckg_pidm = b1.shrtckn_pidm
---                                     and a1.shrtckg_term_code = b1.shrtckn_term_code
---                                     and a1.shrtckg_term_code = a.shrtckg_term_code
---                                     and a1.shrtckg_pidm = a.shrtckg_pidm
---                                     and b1.shrtckn_crse_numb = b.shrtckn_crse_numb
---                                     and b1.shrtckn_subj_code = b.shrtckn_subj_code
---
---                             )
---       and a.shrtckg_pidm = b.shrtckn_pidm
---       and a.shrtckg_pidm = dxgrad_pidm
---       and b.shrtckn_subj_code in ('ENGL', 'MATH', 'ESL', 'ESOL')
---       and b.shrtckn_crse_numb < '1000'
---       and a.shrtckg_gmod_code not in ('A', 'N')
---       and a.shrtckg_grde_code_final in (select distinct shrgrde_code from shrgrde where shrgrde_passed_ind = 'Y')
---       and (b.shrtckn_repeat_course_ind != 'E' or b.shrtckn_repeat_course_ind is null)
---       and shrtckn_term_code <= dxgrad_term_code_grad
---       and dxgrad_levl_code != 'GR'
---       and a.shrtckg_term_code > '199830'
---       and a.shrtckg_tckn_seq_no = b.shrtckn_seq_no
---     group by a.shrtckg_pidm);
-
-select *
-from dxgrad_current;
 
 
 
@@ -994,19 +989,11 @@ set dxgrad_req_hrs = (
 )
 where dxgrad_req_hrs is null;
 
-commit;
---
+update dxgrad_current dx
+set dxgrad_req_hrs = 120
+where dxgrad_dgmr_prgm = 'BS-ACCT';
 
--- Check to make sure no other IPEDS Levels were incorrectly assigned.
-select
-    count(*) as "Count",
-    nvl(dxgrad_ipeds_levl, 'x') as "Level",
-    dxgrad_degc_code as "Degc ",
-    dxgrad_cipc_code as "Cipc ",
-    dxgrad_req_hrs as "Req Hrs"
-from dxgrad_current
-group by dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_cipc_code, dxgrad_req_hrs
-;
+COMMIT ;
 
 
 /* Now CHECK FOR NULLS.
@@ -1787,7 +1774,7 @@ ALTER TABLE dxgrad_all MODIFY dxgrad_ushe_majr_coll VARCHAR(100);
 ALTER TABLE dxgrad_all MODIFY dxgrad_majr_desc VARCHAR(100);
 
 -- Once a year, import _current data into _all tabl e
-CREATE TABLE dxgrad_all_bk10092018 AS SELECT * FROM dxgrad_all;
+CREATE TABLE dxgrad_all_bk07282020 AS SELECT * FROM dxgrad_all;
 
 INSERT INTO dxgrad_all
 (
