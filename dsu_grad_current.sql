@@ -606,17 +606,10 @@ set a.dxgrad_grad_hrs = ( -- Total Hours
                               and shrtgpa_term_code <= dxgrad_term_code_grad
                             group by shrtgpa_pidm) - dxgrad_remed_hrs;
 
--- Fix CERT-CNA Grad Hours
-UPDATE dxgrad_current
-   SET dxgrad_req_hrs = 4
- WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
-   AND dxgrad_dgmr_prgm = 'CERT-CNA';
 
--- Fix BS-BU Grad Hours
-UPDATE dxgrad_current
-   SET dxgrad_req_hrs = 120
- WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
-   AND dxgrad_dgmr_prgm = 'BS-BU';
+
+
+
 
 /*
 Manual Fixes: These corrections are being applied because we are finding graduates that have
@@ -627,25 +620,30 @@ https://dixiestate-my.sharepoint.com/:x:/r/personal/d00436636_dixie_edu/_layouts
  */
 
 UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 62
+   SET dxgrad_grad_hrs = 620
  WHERE dxgrad_pidm = '176016'
    AND dxgrad_dgmr_prgm = 'AS-GENED';
 
 UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 66
+   SET dxgrad_grad_hrs = 660
  WHERE dxgrad_pidm = '218609'
    AND dxgrad_dgmr_prgm = 'AS-GENED';
 
 UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 60
+   SET dxgrad_grad_hrs = 600
  WHERE dxgrad_pidm = '231103'
    AND dxgrad_dgmr_prgm = 'AS-GENED';
 
 UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 65
+   SET dxgrad_grad_hrs = 650
  WHERE dxgrad_pidm = '240547'
    AND dxgrad_dgmr_prgm = 'AS-GENED';
 
+UPDATE dxgrad_current
+   SET dxgrad_grad_hrs = 1200
+WHERE dxgrad_pidm = '226437' and dxgrad_dgmr_prgm = 'BS-ACCT';
+
+COMMIT ;
 
 -- G-COM14 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Accepted Credit from Other Sources
@@ -691,6 +689,8 @@ set dxgrad_other_hrs = (
    shrtckn_repeat_course_ind <> 'E' (E = not counted in GPA, I = Repeat counted in GPA) */
 
 -- Calculate and populate remedial hours from SHRTCKG and SHRTCKN
+UPDATE dxgrad_current
+    SET    dxgrad_remed_hrs = 0 ;
 
 
 UPDATE dxgrad_current
@@ -991,7 +991,19 @@ where dxgrad_req_hrs is null;
 
 update dxgrad_current dx
 set dxgrad_req_hrs = 120
-where dxgrad_dgmr_prgm = 'BS-ACCT';
+where dxgrad_dgmr_prgm in ('BS-ACCT', 'BS-BIOL-SET');
+
+-- Fix CERT-CNA Grad Hours
+UPDATE dxgrad_current
+   SET dxgrad_req_hrs = 4
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+   AND dxgrad_dgmr_prgm = 'CERT-CNA';
+
+-- Fix BS-BU Grad Hours
+UPDATE dxgrad_current
+   SET dxgrad_req_hrs = 120
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+   AND dxgrad_dgmr_prgm = 'BS-BU';
 
 COMMIT ;
 
@@ -1657,6 +1669,15 @@ set dxgrad_state_origin = (
         from students03@dscir s2
         where dsc_pidm = dxgrad_pidm and banner_term <= dxgrad_term_code_grad))
 where dxgrad_state_origin is null;
+
+/*
+ FIXES
+ Email from Misti Pierce:
+ You will be able to remove Arianna Witham 00391116 from your list.  I have spoken with the student, and she will come back in fall 2020 to complete her remaining 3 credits.  I changed her status from “awarded” to “pending” in Banner.
+ */
+
+DELETE dxgrad_current
+WHERE dxgrad_id = '00391116';
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
