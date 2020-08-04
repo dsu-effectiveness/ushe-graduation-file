@@ -1744,6 +1744,20 @@ commit;
 |                    YOU ARE DONE! YOU CAN USE THE BELOW QUERIES FOR 2AB REPORT.                   |
 \**************************************************************************************************/
 
+--Check for where grad hrs is less than req hrs
+SELECT dxgrad_pidm,
+       dxgrad_id,
+       dxgrad_grad_hrs / 10 AS dxgrad_grad_hrs,
+       dxgrad_req_hrs,
+       dxgrad_remed_hrs AS dxgrad_remed_hrs,
+       dxgrad_trans_hrs as dxgrad_trans_hrs,
+       dxgrad_dgmr_prgm,
+       dxgrad_term_code_grad,
+       dxgrad_levl_code
+  FROM dxgrad_current
+ WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
+ ORDER BY 1;
+
 -- Checks for which USHE may ask you to verify numbers / counts: ------------------------------------
 
 -- Count (Unduplicated)
