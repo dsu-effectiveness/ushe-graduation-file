@@ -3,6 +3,7 @@
                   :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
 ***************************************************************************************************/
 
+
 ----------------------------------------------------------------------------------------------------
 -- Create Backup Tables.                                                                          --
 ----------------------------------------------------------------------------------------------------
@@ -262,7 +263,7 @@ where EXISTS(select
              where spbpers_pidm = dxgrad_pidm
                and gorvisa_pidm = dxgrad_pidm
                and spbpers_citz_code = '2'
-               and gorvisa_visa_expire_date is null)
+               AND (gorvisa_visa_expire_date > sysdate OR gorvisa_visa_expire_date IS NULL))
   and dxgrad_ethn_n is null;
 
 
@@ -1284,6 +1285,8 @@ UPDATE dxgrad_current
  WHERE dxgrad_majr_desc IS NULL;
 
 
+
+
 -- DSU - HS Grad Date ------------------------------------------------------------------------------
 -- ELEMENT NAME: High School Grad Date
 -- FIELD NAME:   dxgrad_gsgrad_dt (not required for USHE File)
@@ -1720,7 +1723,7 @@ select
     nvl(lpad(to_char(dxgrad_req_hrs), 3, '0'), '000') as g_req_hrs_deg,                                     -- G-18 - must be 3 digits
     dxgrad_hs_code as g_high_school,                                                                        -- G-19
     dxgrad_ssid as g_ssid,                                                                                  -- G-20
-    dxgrad_id as g_banner_id,                                                                               -- G-21
+    'D' || dxgrad_id as g_banner_id,                                                                               -- G-21
     '' as g_we_earn_cont_hrs,                                                                               -- G-22
     '' as g_we_prgm_hrs,                                                                                    -- G-23
     dxgrad_acyr as g_fis_year,                                                                              -- G-24
