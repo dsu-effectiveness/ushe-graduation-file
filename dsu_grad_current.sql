@@ -3,95 +3,7 @@
                   :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
 ***************************************************************************************************/
 
-
-----------------------------------------------------------------------------------------------------
--- Create Backup Tables.                                                                          --
-----------------------------------------------------------------------------------------------------
-
--- Note: this step is only performed once a year.
--- RENAME dxgrad_current TO dxgrad_bk||to_char(to_date(TRUNCATE(SYSDATE),'MMDDYY'));
-
-----------------------------------------------------------------------------------------------------
--- Drop / Create New Tables.                                                                      --
-----------------------------------------------------------------------------------------------------
------------------------------------------------------------------------------------------------------------------------------------ total awards is 2309, fewer students
-drop table dxgrad_current;
-create table dxgrad_current
-(
-    dxgrad_pidm           number(8, 0),
-    dxgrad_id             varchar2(9 byte),
-    dxgrad_ssn            number(9),
-    dxgrad_ssid           varchar2(10 byte),
-    dxgrad_acyr           varchar2(4 byte),
-    dxgrad_term_code_grad varchar2(6 byte),
-    dxgrad_dsugrad_dt     date,
-    dxgrad_last_name      varchar2(60 byte),
-    dxgrad_first_name     varchar2(15 byte),
-    dxgrad_middle         varchar2(15 byte),
-    dxgrad_suffix         varchar2(4 byte),
-    dxgrad_birth_dt       date,
-    dxgrad_age            number(3, 0),
-    dxgrad_sex            varchar2(1 byte),
-    dxgrad_ethn_code      varchar2(1 byte),
-    dxgrad_ethnic_desc    varchar2(30 byte),
-    dxgrad_ethn_h         varchar2(1 byte),
-    dxgrad_ethn_a         varchar2(1 byte),
-    dxgrad_ethn_b         varchar2(1 byte),
-    dxgrad_ethn_i         varchar2(1 byte),
-    dxgrad_ethn_p         varchar2(1 byte),
-    dxgrad_ethn_w         varchar2(1 byte),
-    dxgrad_ethn_n         varchar2(1 byte),
-    dxgrad_ethn_u         varchar2(1 byte),
-    dxgrad_prev_degr      varchar2(6 byte),
-    dxgrad_hs_code        varchar2(6 byte),
-    dxgrad_hsgrad_dt      number(8, 0),
-    dxgrad_ut_cnty_code   varchar2(5 byte),
-    dxgrad_state_origin   varchar2(2 byte),
-    dxgrad_country_origin varchar2(2 byte),
-    dxgrad_initial_ea     varchar2(6 byte),
-    dxgrad_initial_term   varchar2(6 byte),
-    dxgrad_initial_pt_ft  varchar2(1 byte),
-    dxgrad_initial_degint varchar2(1 byte),
-    dxgrad_initial_sport  varchar2(4 byte),
-    dxgrad_pell_pd        varchar2(1 byte),
-    dxgrad_gpa            number(8, 0),
-    dxgrad_grad_hrs       number(8, 1),
-    dxgrad_other_hrs      number(8, 1),
-    dxgrad_trans_hrs      number(8, 1),
-    dxgrad_remed_hrs      number(8, 1),
-    dxgrad_req_hrs        number(3, 0),
-    dxgrad_grad_majr      varchar2(4 byte),
-    dxgrad_majr_desc      varchar2(100 byte),
-    dxgrad_majr_conc1     varchar2(4 byte),
-    dxgrad_majr_conc2     varchar2(4 byte),
-    dxgrad_grad_minr1     varchar2(4 byte),
-    dxgrad_grad_minr2     varchar2(4 byte),
-    dxgrad_cipc_code      varchar2(6 byte),
-    dxgrad_ipeds_levl     varchar2(2 byte),
-    dxgrad_levl_code      varchar2(2 byte),
-    dxgrad_dgmr_seqno     number(2, 0),
-    dxgrad_dgmr_prgm      varchar2(12 byte),
-    dxgrad_degc_code      varchar2(6 byte),
-    dxgrad_degc_desc      varchar2(100),
-    dxgrad_activity_dt    date,
-    dxgrad_inst           varchar2(4 byte),
-    dxgrad_ushe_term      number(1, 0),
-    dxgrad_ushe_majr_coll varchar2(100),
-    dxgrad_ushe_majr_desc varchar2(100)
-) tablespace users pctused 0 pctfree 10 initrans 1 maxtrans 255 storage
-(
-    initial 64K
-    next 64K
-    minextents 1
-    maxextents 2147483645
-    pctincrease 0
-    buffer_pool default
-) nologging nocache noparallel;
-
-----------------------------------------------------------------------------------------------------
--- Insert data from SPRIDEN, SPBPERS, SHRDGMR and STVMAJR
-----------------------------------------------------------------------------------------------------
--- Create database link PRODDB connect to ENROLL identified BY ww19swhme using 'ENROLL' <<dblink>>
+truncate table dxgrad_current;
 
 insert into dxgrad_current
     (dxgrad_pidm,
@@ -150,6 +62,7 @@ insert into dxgrad_current
       and spriden_change_ind is null
       and shrdgmr_grad_date between to_date(:gradstart) and to_date(:gradend) -- change every year
 );
+
 
 -- G-02 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Student ID
@@ -1805,69 +1718,54 @@ select
 from dxgrad_current
 group by dxgrad_cipc_code
 order by dxgrad_cipc_code;
-/** /
----------------------------------------------
-ALTER TABLE dxgrad_all MODIFY dxgrad_majr_desc VARCHAR(100);
-ALTER TABLE dxgrad_all MODIFY dxgrad_ushe_majr_coll VARCHAR(100);
-ALTER TABLE dxgrad_all MODIFY dxgrad_majr_desc VARCHAR(100);
 
--- Once a year, import _current data into _all tabl e
-CREATE TABLE dxgrad_all_bk07282020 AS SELECT * FROM dxgrad_all;
+/*
+ Final script to move graduates into dxgrad_all
+ */
 
-INSERT INTO dxgrad_all
-(
-  dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
-  dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age, dxgrad_sex,
-  dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a, dxgrad_ethn_b,
-  dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u, dxgrad_prev_degr,
-  dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code, dxgrad_state_origin,
-  dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term, dxgrad_initial_pt_ft,
-  dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd, dxgrad_gpa, dxgrad_grad_hrs,
-  dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs, dxgrad_req_hrs, dxgrad_degc_code,
-  dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1, dxgrad_majr_conc2, dxgrad_cipc_code,
-  dxgrad_ipeds_levl, dxgrad_levl_code, dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt,
-  dxgrad_ushe_majr_coll, dxgrad_ushe_majr_desc
-)
-
-SELECT dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
-       dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age,
-       dxgrad_sex, dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a,
-       dxgrad_ethn_b, dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u,
-       dxgrad_prev_degr, dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code,
-       dxgrad_state_origin, dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term,
-       dxgrad_initial_pt_ft, dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd,
-       dxgrad_gpa, dxgrad_grad_hrs, dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs,
-       dxgrad_req_hrs, dxgrad_degc_code, dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1,
-       dxgrad_majr_conc2, dxgrad_cipc_code, dxgrad_ipeds_levl, dxgrad_levl_code,
-       dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt, dxgrad_ushe_majr_coll,
-       dxgrad_ushe_majr_desc
-FROM   dxgrad_current;
-
--- TRUNCATE TABLE dxgrad_current;
-
--- COMMIT;
-select * from spbpers where spbpers_pidm = dsc.f_get_pidm('00177625')
-
-*/
------------------------------------------------------------------------------------------------------
---select * from dsc_programs_current ---eced need to have deprartment to FSHD 
---update dsc_programs_all SET dept_code = 'FSHD' WHERE majr_code = 'ECED' AND acyr_code = '1920'
+--  INSERT INTO dxgrad_all
+--     (
+--       dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
+--       dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age, dxgrad_sex,
+--       dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a, dxgrad_ethn_b,
+--       dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u, dxgrad_prev_degr,
+--       dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code, dxgrad_state_origin,
+--       dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term, dxgrad_initial_pt_ft,
+--       dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd, dxgrad_gpa, dxgrad_grad_hrs,
+--       dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs, dxgrad_req_hrs, dxgrad_degc_code,
+--       dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1, dxgrad_majr_conc2, dxgrad_cipc_code,
+--       dxgrad_ipeds_levl, dxgrad_levl_code, dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt,
+--       dxgrad_ushe_majr_coll, dxgrad_ushe_majr_desc
+--     )
 --
---select * from stvrelg
-
---SELECT DISTINCT dsc_pidm, s_banner_id, 's_id' as old_label, s_id AS old_data, spbpers_ssn AS new_data 
---FROM   students03@dscir, spbpers
---WHERE  spbpers_pidm = dsc_pidm 
---AND    s_id        != spbpers_ssn 
---AND    spbpers_ssn NOT LIKE '000%'
---AND    spbpers_ssn NOT LIKE '9%' 
---AND    substr(spbpers_ssn,4,2) != '00'  
---AND    substr(spbpers_ssn,6,4) != '0000' 
---AND    dsc_pidm IN (SELECT dsc_pidm FROM students03@dscir WHERE s_year = '2019');
-
+--     SELECT dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
+--            dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age,
+--            dxgrad_sex, dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a,
+--            dxgrad_ethn_b, dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u,
+--            dxgrad_prev_degr, dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code,
+--            dxgrad_state_origin, dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term,
+--            dxgrad_initial_pt_ft, dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd,
+--            dxgrad_gpa, dxgrad_grad_hrs, dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs,
+--            dxgrad_req_hrs, dxgrad_degc_code, dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1,
+--            dxgrad_majr_conc2, dxgrad_cipc_code, dxgrad_ipeds_levl, dxgrad_levl_code,
+--            dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt, dxgrad_ushe_majr_coll,
+--            dxgrad_ushe_majr_desc
+--     FROM   dxgrad_current;
+--
+--
 -- COMMIT;
--- SELECT * FROM dxgrad_current;
--- SELECT * FROM shrdgmr where shrdgmr_term_code_grad BETWEEN 201830 AND 201920;
+--
+-- SELECT *
+-- FROM dxgrad_all
+-- WHERE dxgrad_acyr = '1920';
+
+-- DELETE dxgrad_all
+-- WHERE dxgrad_acyr = '1920';
+
+
+
+
+
 
 
 -- end of file
