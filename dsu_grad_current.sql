@@ -1723,47 +1723,48 @@ order by dxgrad_cipc_code;
  Final script to move graduates into dxgrad_all
  */
 
---  INSERT INTO dxgrad_all
---     (
---       dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
---       dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age, dxgrad_sex,
---       dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a, dxgrad_ethn_b,
---       dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u, dxgrad_prev_degr,
---       dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code, dxgrad_state_origin,
---       dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term, dxgrad_initial_pt_ft,
---       dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd, dxgrad_gpa, dxgrad_grad_hrs,
---       dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs, dxgrad_req_hrs, dxgrad_degc_code,
---       dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1, dxgrad_majr_conc2, dxgrad_cipc_code,
---       dxgrad_ipeds_levl, dxgrad_levl_code, dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt,
---       dxgrad_ushe_majr_coll, dxgrad_ushe_majr_desc
---     )
---
---     SELECT dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
---            dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age,
---            dxgrad_sex, dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a,
---            dxgrad_ethn_b, dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u,
---            dxgrad_prev_degr, dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code,
---            dxgrad_state_origin, dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term,
---            dxgrad_initial_pt_ft, dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd,
---            dxgrad_gpa, dxgrad_grad_hrs, dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs,
---            dxgrad_req_hrs, dxgrad_degc_code, dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1,
---            dxgrad_majr_conc2, dxgrad_cipc_code, dxgrad_ipeds_levl, dxgrad_levl_code,
---            dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt, dxgrad_ushe_majr_coll,
---            dxgrad_ushe_majr_desc
---     FROM   dxgrad_current;
---
---
--- COMMIT;
---
--- SELECT *
--- FROM dxgrad_all
--- WHERE dxgrad_acyr = '1920';
+/*
+ INSERT INTO dxgrad_all
+    (
+      dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
+      dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age, dxgrad_sex,
+      dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a, dxgrad_ethn_b,
+      dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u, dxgrad_prev_degr,
+      dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code, dxgrad_state_origin,
+      dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term, dxgrad_initial_pt_ft,
+      dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd, dxgrad_gpa, dxgrad_grad_hrs,
+      dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs, dxgrad_req_hrs, dxgrad_degc_code,
+      dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1, dxgrad_majr_conc2, dxgrad_cipc_code,
+      dxgrad_ipeds_levl, dxgrad_levl_code, dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt,
+      dxgrad_ushe_majr_coll, dxgrad_ushe_majr_desc
+    )
 
--- DELETE dxgrad_all
--- WHERE dxgrad_acyr = '1920';
+    SELECT dxgrad_pidm, dxgrad_id, dxgrad_acyr, dxgrad_term_code_grad, dxgrad_dsugrad_dt,
+           dxgrad_last_name, dxgrad_first_name, dxgrad_middle, dxgrad_birth_dt, dxgrad_age,
+           dxgrad_sex, dxgrad_ethn_code, dxgrad_ethnic_desc, dxgrad_ethn_h, dxgrad_ethn_a,
+           dxgrad_ethn_b, dxgrad_ethn_i, dxgrad_ethn_p, dxgrad_ethn_w, dxgrad_ethn_n, dxgrad_ethn_u,
+           dxgrad_prev_degr, dxgrad_hs_code, dxgrad_hsgrad_dt, dxgrad_ut_cnty_code,
+           dxgrad_state_origin, dxgrad_country_origin, dxgrad_initial_ea, dxgrad_initial_term,
+           dxgrad_initial_pt_ft, dxgrad_initial_degint, dxgrad_initial_sport, dxgrad_pell_pd,
+           dxgrad_gpa, dxgrad_grad_hrs, dxgrad_other_hrs, dxgrad_trans_hrs, dxgrad_remed_hrs,
+           dxgrad_req_hrs, dxgrad_degc_code, dxgrad_grad_majr, dxgrad_majr_desc, dxgrad_majr_conc1,
+           dxgrad_majr_conc2, dxgrad_cipc_code, dxgrad_ipeds_levl, dxgrad_levl_code,
+           dxgrad_dgmr_seqno, dxgrad_dgmr_prgm, dxgrad_activity_dt, dxgrad_ushe_majr_coll,
+           dxgrad_ushe_majr_desc
+    FROM   dxgrad_current;
 
 
+COMMIT;
 
+SELECT *
+FROM dxgrad_all
+WHERE dxgrad_acyr = '1920';
+
+DELETE dxgrad_all
+WHERE dxgrad_acyr = '1920';
+
+
+*/
 
 
 
