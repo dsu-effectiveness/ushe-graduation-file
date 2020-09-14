@@ -32,7 +32,8 @@ insert into dxgrad_current
     select
         shrdgmr_pidm,                      -- dxgrad_pidm
         spriden_id,                        -- dxgrad_id
-        spbpers_ssn,                       -- dxgrad_ssn
+
+           spbpers_ssn,                       -- dxgrad_ssn
         '1920',                            -- dxgrad_acyr
         shrdgmr_term_code_grad,            -- dxgrad_term_code_grad
         shrdgmr_grad_date,                 -- dxgrad_dsugrad_dt
@@ -77,8 +78,11 @@ insert into dxgrad_current
 update dxgrad_current
 set dxgrad_ssn = dxgrad_id
 where dxgrad_ssn is null
-   or LENGTH(dxgrad_ssn) <> '9'
+   or LENGTH(dxgrad_ssn) != '9'
+   or dxgrad_ssn like '9%'
    or dxgrad_ssn in ('00000', '000000000', '');
+
+
 
 -- G-03 --------------------------------------------------------------------------------------------
 /* ELEMENT NAME: Name
@@ -1594,6 +1598,26 @@ where dxgrad_state_origin is null;
 
 DELETE dxgrad_current
 WHERE dxgrad_id = '00391116';
+
+/* USHE Manual Fixes */
+update dxgrad_current
+set dxgrad_ssn = '483197366'
+where'D' || dxgrad_id = 'D00375548';
+
+update dxgrad_current
+set dxgrad_ssn = '676645211'
+where 'D' || dxgrad_id = 'D00418777';
+
+update dxgrad_current
+set dxgrad_ssn = '000395294'
+where 'D' || dxgrad_id = 'D00395294';
+
+update dxgrad_current
+set dxgrad_hs_code = '051584'
+where 'D' || dxgrad_id = 'D00389114';
+
+
+commit;
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
