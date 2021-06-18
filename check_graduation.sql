@@ -1,3 +1,7 @@
+/***************************************************************************************************
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+***************************************************************************************************/
 
  ----------------------------------------------------------------------------------------------------
  -- Graduation Verification Scripts 
@@ -269,11 +273,12 @@
     INSERT INTO error_log VALUES ('G-08a', 
            (
              SELECT count(*) AS "G-08a"
-          -- SELECT DISTINCT dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_dsugrad_dt
+          -- SELECT DISTINCT dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_dsugrad_dt, to_date(:gradstart) AS start_date, to_date(:gradend) AS end_date
              FROM   dxgrad_current
-             WHERE  dxgrad_dsugrad_dt > to_date('30-JUN-19') -- update each year
-             OR     dxgrad_dsugrad_dt < to_date('01-JUL-20') -- update each year
+             WHERE  dxgrad_dsugrad_dt < to_date(:gradstart)
+             OR     dxgrad_dsugrad_dt > to_date(:gradend)
            ));
+
 
 
                      
@@ -365,19 +370,21 @@
     INSERT INTO error_log VALUES ('G-13', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name,dxgrad_grad_hrs
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name,dxgrad_grad_hrs, dxgrad_grad_hrs
              FROM   dxgrad_current
-             WHERE  dxgrad_grad_hrs IS NULL 
-             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') IN ('','0') 
+             WHERE  dxgrad_grad_hrs IS NULL
+             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') IN ('','0')
              OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') LIKE '%.%'
            ));
+
+SELECT * FROM dxgrad_current;
     
     
  -- G-14 dxgrad_hrs_other ---------------------------------------------------------------------------
     INSERT INTO error_log VALUES ('G-14', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_hrs_other
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_other_hrs
              FROM   dxgrad_current
              WHERE  dxgrad_other_hrs IS NULL 
              OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') IN ('','0') 
@@ -411,11 +418,12 @@
     INSERT INTO error_log VALUES ('G-17', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_ipeds_levl, dxgrad_degc_code
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_dgmr_prgm
              FROM   dxgrad_current
-             WHERE  dxgrad_ipeds_levl NOT IN ('01','02','03','04','05','06','07','08','17','18','19') 
+             WHERE  dxgrad_ipeds_levl NOT IN ('1A', '1B','02','03','04','05','06','07','08','17','18','19')
              OR     dxgrad_ipeds_levl IS NULL
            ));
+SELECT * FROM dxgrad_current;
            
                     
 
@@ -520,7 +528,33 @@
  -- ???
     
  ----------------------------------------------------------------------------------------------------
- /* 
+
+ /***************************************************************************************************
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+***************************************************************************************************/
+
+ -- DSU Internal Check - Checks for Graduates where the graduation date, academic year, and term code don't align
+ -- send this to the Graduation Coordinator */
+SELECT shrdgmr_pidm,
+       f_format_name(shrdgmr_pidm, 'FL') AS name,
+       spriden_id AS banner_id,
+       shrdgmr_degc_code,
+       shrdgmr_degs_code,
+       shrdgmr_term_code_grad,
+       shrdgmr_acyr_code,
+       shrdgmr_grad_date,
+       shrdgmr_program
+FROM shrdgmr a
+LEFT JOIN spriden b ON b.spriden_pidm = a.shrdgmr_pidm
+WHERE shrdgmr_grad_date between TO_DATE(:gradstart) and TO_DATE(:gradend)
+AND shrdgmr_degs_code = 'AW'
+AND (shrdgmr_acyr_code != EXTRACT(year FROM SYSDATE)
+OR shrdgmr_term_code_grad NOT IN ('202030', '202040', '202120'))
+AND spriden_change_ind IS NULL
+ORDER BY shrdgmr_term_code_grad;
+
+
     -- Graduates Tab
     SELECT (SELECT count(DISTINCT dxgrad_pidm) FROM dxgrad_current) AS distinct_hc,
            (SELECT count(*) FROM dxgrad_current)                    AS degree_count

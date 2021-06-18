@@ -2,7 +2,6 @@
 -- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
                   :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
 ***************************************************************************************************/
-
 truncate table dxgrad_current;
 
 insert into dxgrad_current
@@ -530,38 +529,9 @@ set a.dxgrad_grad_hrs = ( -- Total Hours
 
 
 /*
-Manual Fixes: These corrections are being applied because we are finding graduates that have
-earned credits that are less than the required credits for their pursed degree / program.
-Various issues are causing this, hence the below update statement.
-See comments here:
-https://dixiestate-my.sharepoint.com/:x:/r/personal/d00436636_dixie_edu/_layouts/15/Doc.aspx?sourcedoc=%7BC56A5DDB-3CB4-48A3-AA3A-8B1510265857%7D&file=dxgrad_current_grad_rem_fixes_1920.xlsx&action=default&mobileredirect=true
+Manual Fixes:
+
  */
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 620
- WHERE dxgrad_pidm = '176016'
-   AND dxgrad_dgmr_prgm = 'AS-GENED';
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 660
- WHERE dxgrad_pidm = '218609'
-   AND dxgrad_dgmr_prgm = 'AS-GENED';
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 600
- WHERE dxgrad_pidm = '231103'
-   AND dxgrad_dgmr_prgm = 'AS-GENED';
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 650
- WHERE dxgrad_pidm = '240547'
-   AND dxgrad_dgmr_prgm = 'AS-GENED';
-
-UPDATE dxgrad_current
-   SET dxgrad_grad_hrs = 1200
-WHERE dxgrad_pidm = '226437' and dxgrad_dgmr_prgm = 'BS-ACCT';
-
-COMMIT ;
 
 -- G-COM14 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Accepted Credit from Other Sources
@@ -898,15 +868,15 @@ update dxgrad_current
 set dxgrad_req_hrs = (
     select
         hrs_this_yr --nts::replace with variable.
-    from dsc_programs_all
-    where acyr_code = '1920'
-      and dxgrad_dgmr_prgm = prgm_code
+    from dsc_programs_current
+    where dxgrad_dgmr_prgm = prgm_code
       and (dxgrad_degc_code = degc_code or dxgrad_grad_majr = majr_code)
       and rownum = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
 
 )
 where dxgrad_req_hrs is null;
 
+/*
 update dxgrad_current dx
 set dxgrad_req_hrs = 120
 where dxgrad_dgmr_prgm in ('BS-ACCT', 'BS-BIOL-SET');
@@ -922,7 +892,7 @@ UPDATE dxgrad_current
    SET dxgrad_req_hrs = 120
  WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
    AND dxgrad_dgmr_prgm = 'BS-BU';
-
+*/
 COMMIT ;
 
 
@@ -991,6 +961,7 @@ set dxgrad_hs_code = (
     select sorhsch_sbgi_code from sorhsch where sorhsch_pidm = dxgrad_pidm and rownum < 2)
 where dxgrad_hs_code is null;
 
+/*
 -- Change out of country to 459150
 update dxgrad_current
 set dxgrad_hs_code = '459150'
@@ -1038,7 +1009,7 @@ update dxgrad_current
 set dxgrad_hs_code = '459400'
 where dxgrad_hs_code = '969999';
 --
-
+*/
 -- Search for those with HS unknown to see if they have a second hs coded in banner
 /*
    SELECT sorhsch_sbgi_code, dxgrad_id, dxgrad_pidm, dxgrad_hs_code
@@ -1592,29 +1563,10 @@ where dxgrad_state_origin is null;
 
 /*
  FIXES
- Email from Misti Pierce:
- You will be able to remove Arianna Witham 00391116 from your list.  I have spoken with the student, and she will come back in fall 2020 to complete her remaining 3 credits.  I changed her status from “awarded” to “pending” in Banner.
+
  */
 
-DELETE dxgrad_current
-WHERE dxgrad_id = '00391116';
 
-/* USHE Manual Fixes */
-update dxgrad_current
-set dxgrad_ssn = '483197366'
-where'D' || dxgrad_id = 'D00375548';
-
-update dxgrad_current
-set dxgrad_ssn = '676645211'
-where 'D' || dxgrad_id = 'D00418777';
-
-update dxgrad_current
-set dxgrad_ssn = '000395294'
-where 'D' || dxgrad_id = 'D00395294';
-
-update dxgrad_current
-set dxgrad_hs_code = '051584'
-where 'D' || dxgrad_id = 'D00389114';
 
 
 commit;
@@ -1794,3 +1746,5 @@ WHERE dxgrad_acyr = '1920';
 
 
 -- end of file
+
+COMMIT;
