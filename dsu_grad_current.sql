@@ -1,8 +1,9 @@
 /***************************************************************************************************
--- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
-                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+-- Set Parameters :gradstart = 'DD-MMM-YY' i.e '30-JUN-20'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-21'
 ***************************************************************************************************/
 truncate table dxgrad_current;
+
 
 insert into dxgrad_current
     (dxgrad_pidm,
@@ -30,10 +31,10 @@ insert into dxgrad_current
      dxgrad_grad_minr2) (
     select
         shrdgmr_pidm,                      -- dxgrad_pidm
-        spriden_id,                        -- dxgrad_id
+        'D' || spriden_id,      -- dxgrad_id
 
-           spbpers_ssn,                       -- dxgrad_ssn
-        '1920',                            -- dxgrad_acyr
+        spbpers_ssn,                       -- dxgrad_ssn
+        '2021',               -- dxgrad_acyr
         shrdgmr_term_code_grad,            -- dxgrad_term_code_grad
         shrdgmr_grad_date,                 -- dxgrad_dsugrad_dt
         substr(spriden_last_name, 1, 15),  -- dxgrad_last_name
@@ -370,7 +371,7 @@ from shrdgmr, spriden
 where shrdgmr_pidm = spriden_pidm
   and shrdgmr_degs_code = 'AW'
   and spriden_entity_ind = 'P'
-  and shrdgmr_grad_date >= to_date('30-JUN-20') -- change every year
+  and shrdgmr_grad_date >= to_date('30-JUN-21') -- change every year
   and spriden_change_ind is null;
 --
 
@@ -402,55 +403,6 @@ select
          else 'NO'
      end) as "Missing Cip Code?"
 from dual;
---
-
--- G-10 --------------------------------------------------------------------------------------------
--- ELEMENT NAME: Degree Type
--- FIELD NAME:   G_DEG_TYPE
-/* DEFINITION:   The Level of Degree or Certificate Completed for the award conferred. Refer to the
-                 Degree Type Table for all degrees.                                               */
-----------------------------------------------------------------------------------------------------
-
--- Fix errors that sometimes occur, producing an invalid majr code
-
---     -- RN, GE, PARA, then GC
---     UPDATE dxgrad_current SET dxgrad_grad_majr = 'RN'   WHERE dxgrad_dgmr_prgm = 'AAS-ADN';     --
---     UPDATE dxgrad_current SET dxgrad_grad_majr = 'GE'   WHERE dxgrad_dgmr_prgm = 'AS-GENED';    --
---     UPDATE dxgrad_current SET dxgrad_grad_majr = 'PARA' WHERE dxgrad_dgmr_prgm = 'CERT-PARA';   --
---     UPDATE dxgrad_current SET dxgrad_grad_majr = 'GC'   WHERE dxgrad_dgmr_prgm = 'CERT-GCOM-C'; --
---
-
--- LPN
---     UPDATE dxgrad_current
---     SET    dxgrad_grad_majr = 'LPN'
---     WHERE  dxgrad_pidm IN
---            (
---              SELECT dxgrad_pidm
---              FROM   dxgrad_current
---              WHERE  dxgrad_dgmr_prgm  = 'CERT-LPN'
---              AND    dxgrad_grad_majr <> 'LPN'
---            )
---     AND    dxgrad_degc_code = 'CER'
---     AND    dxgrad_grad_majr = 'NURS';
---
-
--- EMS
---     UPDATE dxgrad_current
---     SET    dxgrad_grad_majr = 'EMS'
---     WHERE  dxgrad_dgmr_prgm = 'CERT-EMT-I'
---     AND    dxgrad_grad_majr = 'EMT';
-
-
---
-
--- G-11 --------------------------------------------------------------------------------------------
--- ELEMENT NAME: Graduation GPA
--- FIELD NAME:   G_GPA
-/* DEFINITION:   Student's overall cumulative GPA tied to their graduation award. All credit hours
-                 should represent average course grade on a 4.0 scale.                            */
-----------------------------------------------------------------------------------------------------
---select * from student_courses@dscir where dsc_pidm = '252747'
--- select * from shrtgpa where shrtgpa_pidm = '252747'
 
 -- Calculate and populate the GPA from SHRTGPA
 update dxgrad_current
@@ -849,21 +801,6 @@ where dxgrad_dgmr_prgm in
 
 -- Fetch hours for degree from the hrstodegAYAY table where AYAY is the graduating year
 
-update dxgrad_current dx
-set dxgrad_req_hrs = (
-    -- gets the max program effective term
-    with cte_max_term_code_eff as (
-        select max(smbpgen_term_code_eff) as max_smbpgen_term_code_eff, smbpgen_program
-        from smbpgen
-        group by smbpgen_program)
-
-    select
-        smbpgen_req_credits_overall
-    from smbpgen s1
-    inner join cte_max_term_code_eff s2
-               on s2.smbpgen_program = s1.smbpgen_program and s2.max_smbpgen_term_code_eff = s1.smbpgen_term_code_eff
-    where dx.dxgrad_dgmr_prgm = s1.smbpgen_program);
-
 update dxgrad_current
 set dxgrad_req_hrs = (
     select
@@ -873,48 +810,7 @@ set dxgrad_req_hrs = (
       and (dxgrad_degc_code = degc_code or dxgrad_grad_majr = majr_code)
       and rownum = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
 
-)
-where dxgrad_req_hrs is null;
-
-/*
-update dxgrad_current dx
-set dxgrad_req_hrs = 120
-where dxgrad_dgmr_prgm in ('BS-ACCT', 'BS-BIOL-SET');
-
--- Fix CERT-CNA Grad Hours
-UPDATE dxgrad_current
-   SET dxgrad_req_hrs = 4
- WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
-   AND dxgrad_dgmr_prgm = 'CERT-CNA';
-
--- Fix BS-BU Grad Hours
-UPDATE dxgrad_current
-   SET dxgrad_req_hrs = 120
- WHERE (dxgrad_grad_hrs / 10) < dxgrad_req_hrs
-   AND dxgrad_dgmr_prgm = 'BS-BU';
-*/
-COMMIT ;
-
-
-/* Now CHECK FOR NULLS.
-   Aug08 found one stu with AAS-GCOM DGMR_PRGM and in dsc_programs
-   it is AAS-GC (which the other 2 grads had as pgm code (soacurr has AAS-GC not GCOM))
-   There's always gotta be one glitch.  I don't know why both are active in Banner Soacurr
-   but I only added the one in dsc_programs
- * Aug09 CONM which ended before 0910 has students in teachout graduating 0910
-   This will always be the case with 'most' ended programs, so UPDATE the NULLs found here
- * Aug10 CERT-GC was missing FROM dsc_programs0910, and also the ENGL-lit ptw etc soacurr
-   codes, so I changed the UPDATE above to the 1011 version (current which had them) and
-   ran again, BUT MAKE SURE YOU ADD:  WHERE dxgrad_req_hrs IS NULL OR all others will be null */
-
-/*
-   SELECT dxgrad_pidm, dxgrad_id, dxgrad_req_hrs, dxgrad_dgmr_prgm, dxgrad_degc_code,
-          dxgrad_grad_majr, dxgrad_majr_conc1
-   FROM   "ENROLL"."DXGRAD"
-   WHERE  dxgrad_req_hrs IS NULL
-   ORDER  BY dxgrad_degc_code, dxgrad_grad_majr;
-*/
-
+);
 
 -- G-19 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: High School Codes
@@ -1036,17 +932,22 @@ update dxgrad_current
 set dxgrad_ssid = (
     select
         substr(goradid_additional_id, 0, 10)
-    from goradid g1
-    where goradid_pidm = dxgrad_pidm
-      and goradid_adid_code = 'SSID'
-      and goradid_additional_id <> '*'
-      and goradid_version = (
-        select
-            g2.goradid_version
-        from goradid g2
-        where g2.goradid_pidm = dxgrad_pidm
-          and g2.goradid_adid_code = 'SSID'
-          and g2.goradid_additional_id <> '*'))
+      from goradid g1
+ where goradid_pidm = dxgrad_pidm
+   and goradid_adid_code = 'SSID'
+   and goradid_additional_id != '*'
+   and goradid_version = (select g2.goradid_version
+                            from goradid g2
+                           where g2.goradid_pidm = g1.goradid_pidm
+                             and g2.goradid_activity_date = g1.goradid_activity_date
+                             and g2.goradid_adid_code = 'SSID'
+                             and g2.goradid_additional_id != '*')
+   and goradid_activity_date = (SELECT MAX(goradid_activity_date)
+                                  FROM goradid g3
+                                 WHERE g3.goradid_pidm = g1.goradid_pidm
+                                   AND g3.goradid_adid_code = 'SSID'
+                                   AND g3.goradid_additional_id != '*'
+                                   AND g3.goradid_version = g1.goradid_version))
 where dxgrad_ssid is null;
 --
 
@@ -1405,9 +1306,6 @@ where dxgrad_degc_code like 'M%'
 
 
 
-commit;
---
-
 -- DSU-Initial-Sport -------------------------------------------------------------------------------
 -- ELEMENT NAME: Initial Sport
 -- FIELD NAME:   dxgrad_initial_sport
@@ -1566,10 +1464,7 @@ where dxgrad_state_origin is null;
 
  */
 
-
-
-
-commit;
+COMMIT;
 
 ----------------------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------------------
@@ -1729,22 +1624,6 @@ order by dxgrad_cipc_code;
            dxgrad_ushe_majr_desc
     FROM   dxgrad_current;
 
-
-COMMIT;
-
-SELECT *
-FROM dxgrad_all
-WHERE dxgrad_acyr = '1920';
-
-DELETE dxgrad_all
-WHERE dxgrad_acyr = '1920';
-
-
 */
-
-
-
-
--- end of file
 
 COMMIT;
