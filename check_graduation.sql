@@ -1,6 +1,6 @@
 /***************************************************************************************************
--- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
-                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-20'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-21'
 ***************************************************************************************************/
 
  ----------------------------------------------------------------------------------------------------
@@ -377,8 +377,7 @@
              OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') LIKE '%.%'
            ));
 
-SELECT * FROM dxgrad_current;
-    
+
     
  -- G-14 dxgrad_hrs_other ---------------------------------------------------------------------------
     INSERT INTO error_log VALUES ('G-14', 
@@ -460,7 +459,7 @@ SELECT * FROM dxgrad_current;
              FROM   dxgrad_current
              WHERE  dxgrad_id IS NULL
              OR     dxgrad_id = ''
-             OR     LENGTH(dxgrad_id) != 8
+             OR     LENGTH(dxgrad_id) != 9
            ));
     
     
@@ -489,7 +488,7 @@ SELECT * FROM dxgrad_current;
           -- SELECT *
              FROM   dxgrad_current 
              WHERE  dxgrad_acyr IS NULL 
-             OR     dxgrad_acyr != '1920'
+             OR     dxgrad_acyr != (SELECT DISTINCT dxgrad_acyr FROM dxgrad_current)
            ));
        
        
@@ -554,7 +553,7 @@ OR shrdgmr_term_code_grad NOT IN ('202030', '202040', '202120'))
 AND spriden_change_ind IS NULL
 ORDER BY shrdgmr_term_code_grad;
 
- -- DSU Internal Check - Checks for Graduates where the graduation date, academic year, and term code don't align
+ -- DSU Internal Check - Checks for Graduates where the graduation hours are less than required hours
  SELECT dxgrad_pidm,
         dxgrad_id,
         dxgrad_acyr,
@@ -575,7 +574,8 @@ WHERE dxgrad_grad_hrs < dxgrad_req_hrs;
     FROM   dxgrad_current
     GROUP  BY dxgrad_ipeds_levl
     ORDER  BY dxgrad_ipeds_levl;
-    
+
+
     -- Gender Tab
     SELECT (SELECT count(*) FROM dxgrad_current WHERE dxgrad_sex = 'F') 
            AS f_degrees,
@@ -592,75 +592,8 @@ WHERE dxgrad_grad_hrs < dxgrad_req_hrs;
            count(*) as graduates
     FROM   dxgrad_current
     GROUP  BY dxgrad_cipc_code, dxgrad_ushe_majr_desc;
- */
+
  ----------------------------------------------------------------------------------------------------
- 
- -- 
     SELECT * FROM error_log WHERE err_cnt > 0 ORDER BY label;
- /*   
-    SELECT count(distinct dsc_pidm) FROM students03@dscir WHERE s_banner_id IN ('00296739',
-'00284465',
-'00289496',
-'00325391',
-'00247591',
-'00262573',
-'00208471',
-'00206085',
-'00271398',
-'00314792',
-'00245103',
-'00303829',
-'00117804',
-'00188884',
-'00197762',
-'00304858',
-'00295740',
-'00237212',
-'00280000',
-'00120712',
-'00278160',
-'00287530',
-'00255213',
-'00312188');
 
-SELECT count(*) FROM dxgrad_current;
-SELECT count(DISTINCT dxgrad_pidm) FROM dxgrad_current;
-SELECT dxgrad_ipeds_levl, count(*) from dxgrad_current GROUP BY dxgrad_ipeds_levl;
-SELECT dxgrad_sex, count(*) from dxgrad_current GROUP BY dxgrad_sex;
-SELECT dxgrad_sex, count(distinct dxgrad_pidm) from dxgrad_current GROUP BY dxgrad_sex;
-SELECT dxgrad_cipc_code, count(*) from dxgrad_current GROUP BY dxgrad_cipc_code;
- 
- -- Students 18 and under
- SELECT dxgrad_pidm      AS pidm, 
-        dxgrad_id        AS banner_id, 
-        dsc.f_format_name(dxgrad_pidm,'LFMI') 
-                         AS full_name, 
-        dxgrad_Age       AS age_at_grad,
-        dxgrad_degc_code AS degree_level,
-        dxgrad_dgmr_prgm AS program_code,
-        CASE WHEN EXISTS 
-                  (
-                    SELECT 'Y'
-                    FROM   student_courses@dscir 
-                    WHERE  dsc_pidm = dxgrad_pidm 
-                    AND    instr(sc_crs_sec,'S') > 0
-                  )
-               OR EXISTS
-                  (
-                    SELECT 'Y'
-                    FROM   students03@dscir
-                    WHERE  dsc_pidm  = dxgrad_pidm
-                    AND    cur_prgm1 = 'ND-SA'
-                  ) THEN 'Y' ELSE 'N' END AS success_academy
-from    dxgrad_current 
-where   dxgrad_age <= 18;
-
--- "Other" type programs
-SELECT DISTINCT dxgrad_cipc_code, stvmajr_desc, count(*) AS graduates
-FROM   dxgrad_current, stvmajr
-where  dxgrad_grad_majr = stvmajr_code
-AND    dxgrad_cipc_code IN ('090199','131399','309999','520299') 
-GROUP BY dxgrad_cipc_code, stvmajr_desc;
-
- /**/
 -- end of file
