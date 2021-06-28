@@ -444,46 +444,8 @@ set dxgrad_trans_hrs = (
       and stvsbgi_code < '999999'
       and stvsbgi_srce_ind is not null
     group by shrtgpa_pidm);
--- where dxgrad_trans_hrs is null;
 
 
-
--- G-13 --------------------------------------------------------------------------------------------
--- ELEMENT NAME: Total Hours at Graduation
--- FIELD NAME:   G_GRAD_HRS
-/* DEFINITION:   Total number of overall undergraduate hours when the student graduated. This field
-                 should include all hours, except for remedial hours which should not be included
-                 (i.e. S20 + G07 + G09 – G10 = G08). Hours should be converted to semester hours. */
-----------------------------------------------------------------------------------------------------
--- this query needs to be at the bottom because, for some unknown reason, running it earlier in the
--- script will not populate most of the students a problem to solve another day.
-
--- Prime the field with zeros
-update dxgrad_current
-set dxgrad_grad_hrs = '0'
-where dxgrad_grad_hrs is null;
-
-
--- Calculate and populate total hours from SHRTGPA minus remedial hours
-update dxgrad_current a
-set a.dxgrad_grad_hrs = ( -- Total Hours
-                            select
-                                round(sum(shrtgpa_hours_earned), 1) * 10
-                            from shrtgpa
-                            where shrtgpa_pidm = a.dxgrad_pidm
-                              and shrtgpa_levl_code = dxgrad_levl_code
-                              and shrtgpa_term_code <= dxgrad_term_code_grad
-                            group by shrtgpa_pidm) - dxgrad_remed_hrs;
-
-
-
-
-
-
-/*
-Manual Fixes:
-
- */
 
 -- G-COM14 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Accepted Credit from Other Sources
@@ -570,11 +532,38 @@ UPDATE dxgrad_current
            );
 
 /*
- Setting remaing values to null in order to calculate dxgrad_grad_hrs
+ Setting remaining values to null in order to calculate dxgrad_grad_hrs
  */
 UPDATE dxgrad_current
    SET dxgrad_remed_hrs = 0
  WHERE dxgrad_remed_hrs IS NULL;
+
+-- G-13 --------------------------------------------------------------------------------------------
+-- ELEMENT NAME: Total Hours at Graduation
+-- FIELD NAME:   G_GRAD_HRS
+/* DEFINITION:   Total number of overall undergraduate hours when the student graduated. This field
+                 should include all hours, except for remedial hours which should not be included
+                 (i.e. S20 + G07 + G09 – G10 = G08). Hours should be converted to semester hours. */
+----------------------------------------------------------------------------------------------------
+-- this query needs to be at the bottom because, for some unknown reason, running it earlier in the
+-- script will not populate most of the students a problem to solve another day.
+
+-- Prime the field with zeros
+update dxgrad_current
+set dxgrad_grad_hrs = '0'
+where dxgrad_grad_hrs is null;
+
+
+-- Calculate and populate total hours from SHRTGPA minus remedial hours
+update dxgrad_current a
+set a.dxgrad_grad_hrs = ( -- Total Hours
+                            select
+                                round(sum(shrtgpa_hours_earned), 1) * 10
+                            from shrtgpa
+                            where shrtgpa_pidm = a.dxgrad_pidm
+                              and shrtgpa_levl_code = dxgrad_levl_code
+                              and shrtgpa_term_code <= dxgrad_term_code_grad
+                            group by shrtgpa_pidm) - dxgrad_remed_hrs;
 
 
 
@@ -718,13 +707,6 @@ set dxgrad_prev_degr = (
             where s2.shrdgmr_seq_no <> s1.shrdgmr_seq_no) s1)
     where dxgrad_pidm = pidm);
 
---
-
--- Use this query to view records that were just updated
-/* SELECT *
-   FROM   dxgrad_current
-   WHERE  dxgrad_prev_degr IS NOT NULL;
-*/ --
 
 -- G-17 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: IPEDS Award Level Code
@@ -733,40 +715,11 @@ set dxgrad_prev_degr = (
 ----------------------------------------------------------------------------------------------------
 
 -- Set IPEDS Level based on level code and program credit hours
+UPDATE dxgrad_current a
+   SET dxgrad_ipeds_levl = (SELECT ipeds_award_lvl
+                              FROM dsc_programs_current
+                             WHERE prgm_code = a.dxgrad_dgmr_prgm)
 
-update dxgrad_current dx
-set dxgrad_ipeds_levl = (
-    with cte_max_term_code_eff as (
-        select
-            shrdgmr_pidm as pidm,
-            max(smbpgen_term_code_eff) as max_smbpgen_term_code_eff,
-            shrdgmr_program
-        from shrdgmr s1
-        left join smbpgen s2 on smbpgen_program = shrdgmr_program
-        group by shrdgmr_pidm, shrdgmr_program)
-
-    select distinct
-        case
-            when shrdgmr_levl_code = 'UG' then case
-                                                   when smbpgen_req_credits_overall between 1 and 8 then '1A'
-                                                   when smbpgen_req_credits_overall between 9 and 29 then '1B'
-                                                   when smbpgen_req_credits_overall between 30 and 59 then '02'
-                                                   when smbpgen_req_credits_overall between 60 and 119 then '03'
-                                                   when smbpgen_req_credits_overall > 119 then '05'
-                                               end
-            when shrdgmr_levl_code = 'GR' and smbpgen_req_credits_overall > 0 then '07'
-        end AS ipeds_awrd_lvl_2
-    from shrdgmr s1
-    left join smbpgen s2 on s2.smbpgen_program = s1.shrdgmr_program
-    inner join cte_max_term_code_eff s3 on s3.pidm = s1.shrdgmr_pidm and s3.shrdgmr_program = s2.smbpgen_program and
-                                           s3.max_smbpgen_term_code_eff = s2.smbpgen_term_code_eff
-    where dx.dxgrad_pidm = s1.shrdgmr_pidm
-      and dx.dxgrad_dgmr_prgm = s1.shrdgmr_program
-      and dx.dxgrad_levl_code = s1.shrdgmr_levl_code
-      and shrdgmr_grad_date > to_date(:gradstart)
-      and shrdgmr_grad_date < to_date(:gradend));
-
--- Updates IPEDS Level if program is missing from (smbpgen)
 update dxgrad_current
 set dxgrad_ipeds_levl = case
                             when dxgrad_degc_code = 'CER1' then '02'
@@ -775,18 +728,6 @@ set dxgrad_ipeds_levl = case
                             when dxgrad_degc_code like 'M%' then '07'
                         end
 where dxgrad_ipeds_levl is null;
-
--- Updates IPEDS Level Certificates to conform with IPEDS reporting
-update dxgrad_current
-set dxgrad_ipeds_levl = '1A'
-where dxgrad_dgmr_prgm in ('CERT-CNA', 'CERT-PHLB', 'CERT-EMT-A');
-
-update dxgrad_current
-set dxgrad_ipeds_levl = '1B'
-where dxgrad_dgmr_prgm in
-      ('CERT-DFOR', 'CERT-ENTR', 'CERT-EMT', 'CERT-MAKER', 'CERT-SRM', 'CERT-MMJ', 'CERT-SCCM', 'CERT-SM', 'CERT-SCCM',
-       'CERT-MMJ', 'CERT-SRM', 'CERT-PWRT', 'CERT-SM', 'CERT-DSGN', 'CERT-BIOT', 'CERT-CPFD');
-
 
 -- G-18 --------------------------------------------------------------------------------------------
 -- ELEMENT NAME: Required Hours for Degree

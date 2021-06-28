@@ -554,6 +554,16 @@ OR shrdgmr_term_code_grad NOT IN ('202030', '202040', '202120'))
 AND spriden_change_ind IS NULL
 ORDER BY shrdgmr_term_code_grad;
 
+ -- DSU Internal Check - Checks for Graduates where the graduation date, academic year, and term code don't align
+ SELECT dxgrad_pidm,
+        dxgrad_id,
+        dxgrad_acyr,
+        dxgrad_term_code_grad,
+        dxgrad_grad_hrs,
+        dxgrad_req_hrs
+FROM ENROLL.dxgrad_current
+WHERE dxgrad_grad_hrs < dxgrad_req_hrs;
+
 
     -- Graduates Tab
     SELECT (SELECT count(DISTINCT dxgrad_pidm) FROM dxgrad_current) AS distinct_hc,
