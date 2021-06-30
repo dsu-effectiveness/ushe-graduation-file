@@ -4,19 +4,9 @@
 ***************************************************************************************************/
 
  ----------------------------------------------------------------------------------------------------
- -- Graduation Verification Scripts 
- -- Last Revised: July 2015, JR Nolasco, 
- -- Last Updated: October 2015, J. Vieira
+ -- Graduation Verification Scripts
  ----------------------------------------------------------------------------------------------------
- /*
- DROP   TABLE error_log;
- CREATE TABLE error_log
- (
-   label   VARCHAR2(100),
-   err_cnt NUMBER(9)
- );
- */   
- 
+
  TRUNCATE TABLE error_log;   
     
  -- G-00 counts vs. students ------------------------------------------------------------------------
@@ -347,22 +337,21 @@
           -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_gpa
              FROM   dxgrad_current
              WHERE  dxgrad_gpa IS NULL 
-             OR     dxgrad_gpa IN ('','0') 
-             OR     dxgrad_gpa LIKE '%.%' 
-             OR     dxgrad_gpa > '4000'
+             OR     dxgrad_gpa IN ('','0')
+             OR     dxgrad_gpa > '4.000'
            ));
 
 
     
  -- G-12 dxgrad_trans_hrs ---------------------------------------------------------------------------
-    INSERT INTO error_log VALUES ('G-12', 
+    INSERT INTO error_log VALUES ('G-12',
            (
              SELECT count(*)
           -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_trans_hrs
              FROM   dxgrad_current
              WHERE  dxgrad_trans_hrs IS NULL 
              OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') IN ('','0')
-             OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') LIKE '%.%'
+--              OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') LIKE '%.%'
            ));
    
     
@@ -374,7 +363,6 @@
              FROM   dxgrad_current
              WHERE  dxgrad_grad_hrs IS NULL
              OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') IN ('','0')
-             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') LIKE '%.%'
            ));
 
 
@@ -386,8 +374,7 @@
           -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_other_hrs
              FROM   dxgrad_current
              WHERE  dxgrad_other_hrs IS NULL 
-             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') IN ('','0') 
-             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') LIKE '%.%'
+             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') IN ('','0')
            ));
     
     
@@ -422,9 +409,7 @@
              WHERE  dxgrad_ipeds_levl NOT IN ('1A', '1B','02','03','04','05','06','07','08','17','18','19')
              OR     dxgrad_ipeds_levl IS NULL
            ));
-SELECT * FROM dxgrad_current;
-           
-                    
+
 
     
  -- G-18 dxgrad_redxgrad_hrs_deg --------------------------------------------------------------------
@@ -523,15 +508,8 @@ SELECT * FROM dxgrad_current;
              OR     dxgrad_ushe_majr_desc IN ('','0')
            ));
     
- -- G-27b major/CIP code match ----------------------------------------------------------------------
- -- ???
-    
- ----------------------------------------------------------------------------------------------------
+    SELECT * FROM error_log WHERE err_cnt > 0 ORDER BY label;
 
- /***************************************************************************************************
--- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-19'
-                  :gradend = 'DD-MMM-YY' i.e '01-JUL-20'
-***************************************************************************************************/
 
  -- DSU Internal Check - Checks for Graduates where the graduation date, academic year, and term code don't align
  -- send this to the Graduation Coordinator */
@@ -557,6 +535,7 @@ ORDER BY shrdgmr_term_code_grad;
  SELECT dxgrad_pidm,
         dxgrad_id,
         dxgrad_acyr,
+        dxgrad_dgmr_prgm,
         dxgrad_term_code_grad,
         dxgrad_grad_hrs,
         dxgrad_req_hrs
@@ -594,6 +573,5 @@ WHERE dxgrad_grad_hrs < dxgrad_req_hrs;
     GROUP  BY dxgrad_cipc_code, dxgrad_ushe_majr_desc;
 
  ----------------------------------------------------------------------------------------------------
-    SELECT * FROM error_log WHERE err_cnt > 0 ORDER BY label;
 
 -- end of file
