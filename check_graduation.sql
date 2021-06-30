@@ -1,18 +1,12 @@
+/***************************************************************************************************
+-- Set Paremeters :gradstart = 'DD-MMM-YY' i.e '30-JUN-20'
+                  :gradend = 'DD-MMM-YY' i.e '01-JUL-21'
+***************************************************************************************************/
 
  ----------------------------------------------------------------------------------------------------
- -- Graduation Verification Scripts 
- -- Last Revised: July 2015, JR Nolasco, 
- -- Last Updated: October 2015, J. Vieira
+ -- Graduation Verification Scripts
  ----------------------------------------------------------------------------------------------------
- /*
- DROP   TABLE error_log;
- CREATE TABLE error_log
- (
-   label   VARCHAR2(100),
-   err_cnt NUMBER(9)
- );
- */   
- 
+
  TRUNCATE TABLE error_log;   
     
  -- G-00 counts vs. students ------------------------------------------------------------------------
@@ -269,11 +263,12 @@
     INSERT INTO error_log VALUES ('G-08a', 
            (
              SELECT count(*) AS "G-08a"
-          -- SELECT DISTINCT dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_dsugrad_dt
+          -- SELECT DISTINCT dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_dsugrad_dt, to_date(:gradstart) AS start_date, to_date(:gradend) AS end_date
              FROM   dxgrad_current
-             WHERE  dxgrad_dsugrad_dt > to_date('30-JUN-19') -- update each year
-             OR     dxgrad_dsugrad_dt < to_date('01-JUL-20') -- update each year
+             WHERE  dxgrad_dsugrad_dt < to_date(:gradstart)
+             OR     dxgrad_dsugrad_dt > to_date(:gradend)
            ));
+
 
 
                      
@@ -342,22 +337,21 @@
           -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_gpa
              FROM   dxgrad_current
              WHERE  dxgrad_gpa IS NULL 
-             OR     dxgrad_gpa IN ('','0') 
-             OR     dxgrad_gpa LIKE '%.%' 
-             OR     dxgrad_gpa > '4000'
+             OR     dxgrad_gpa IN ('','0')
+             OR     dxgrad_gpa > '4.000'
            ));
 
 
     
  -- G-12 dxgrad_trans_hrs ---------------------------------------------------------------------------
-    INSERT INTO error_log VALUES ('G-12', 
+    INSERT INTO error_log VALUES ('G-12',
            (
              SELECT count(*)
           -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_trans_hrs
              FROM   dxgrad_current
              WHERE  dxgrad_trans_hrs IS NULL 
              OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') IN ('','0')
-             OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') LIKE '%.%'
+--              OR     nvl(lpad(to_char(dxgrad_trans_hrs), 5,'0'),'00000') LIKE '%.%'
            ));
    
     
@@ -365,23 +359,22 @@
     INSERT INTO error_log VALUES ('G-13', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name,dxgrad_grad_hrs
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name,dxgrad_grad_hrs, dxgrad_grad_hrs
              FROM   dxgrad_current
-             WHERE  dxgrad_grad_hrs IS NULL 
-             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') IN ('','0') 
-             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') LIKE '%.%'
+             WHERE  dxgrad_grad_hrs IS NULL
+             OR     nvl(lpad(to_char(dxgrad_grad_hrs), 4, '0'),'0000') IN ('','0')
            ));
-    
+
+
     
  -- G-14 dxgrad_hrs_other ---------------------------------------------------------------------------
     INSERT INTO error_log VALUES ('G-14', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_hrs_other
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_other_hrs
              FROM   dxgrad_current
              WHERE  dxgrad_other_hrs IS NULL 
-             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') IN ('','0') 
-             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') LIKE '%.%'
+             OR     nvl(lpad(to_char(dxgrad_other_hrs), 4, '0'),'0000') IN ('','0')
            ));
     
     
@@ -411,13 +404,12 @@
     INSERT INTO error_log VALUES ('G-17', 
            (
              SELECT count(*)
-          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_ipeds_levl, dxgrad_degc_code
+          -- SELECT dxgrad_ssn, dxgrad_id, dxgrad_last_name, dxgrad_first_name, dxgrad_ipeds_levl, dxgrad_degc_code, dxgrad_dgmr_prgm
              FROM   dxgrad_current
-             WHERE  dxgrad_ipeds_levl NOT IN ('01','02','03','04','05','06','07','08','17','18','19') 
+             WHERE  dxgrad_ipeds_levl NOT IN ('1A', '1B','02','03','04','05','06','07','08','17','18','19')
              OR     dxgrad_ipeds_levl IS NULL
            ));
-           
-                    
+
 
     
  -- G-18 dxgrad_redxgrad_hrs_deg --------------------------------------------------------------------
@@ -452,7 +444,7 @@
              FROM   dxgrad_current
              WHERE  dxgrad_id IS NULL
              OR     dxgrad_id = ''
-             OR     LENGTH(dxgrad_id) != 8
+             OR     LENGTH(dxgrad_id) != 9
            ));
     
     
@@ -481,7 +473,7 @@
           -- SELECT *
              FROM   dxgrad_current 
              WHERE  dxgrad_acyr IS NULL 
-             OR     dxgrad_acyr != '1920'
+             OR     dxgrad_acyr != (SELECT DISTINCT dxgrad_acyr FROM dxgrad_current)
            ));
        
        
@@ -516,11 +508,41 @@
              OR     dxgrad_ushe_majr_desc IN ('','0')
            ));
     
- -- G-27b major/CIP code match ----------------------------------------------------------------------
- -- ???
-    
- ----------------------------------------------------------------------------------------------------
- /* 
+    SELECT * FROM error_log WHERE err_cnt > 0 ORDER BY label;
+
+
+ -- DSU Internal Check - Checks for Graduates where the graduation date, academic year, and term code don't align
+ -- send this to the Graduation Coordinator */
+SELECT shrdgmr_pidm,
+       f_format_name(shrdgmr_pidm, 'FL') AS name,
+       spriden_id AS banner_id,
+       shrdgmr_degc_code,
+       shrdgmr_degs_code,
+       shrdgmr_term_code_grad,
+       shrdgmr_acyr_code,
+       shrdgmr_grad_date,
+       shrdgmr_program
+FROM shrdgmr a
+LEFT JOIN spriden b ON b.spriden_pidm = a.shrdgmr_pidm
+WHERE shrdgmr_grad_date between TO_DATE(:gradstart) and TO_DATE(:gradend)
+AND shrdgmr_degs_code = 'AW'
+AND (shrdgmr_acyr_code != EXTRACT(year FROM SYSDATE)
+OR shrdgmr_term_code_grad NOT IN ('202030', '202040', '202120'))
+AND spriden_change_ind IS NULL
+ORDER BY shrdgmr_term_code_grad;
+
+ -- DSU Internal Check - Checks for Graduates where the graduation hours are less than required hours
+ SELECT dxgrad_pidm,
+        dxgrad_id,
+        dxgrad_acyr,
+        dxgrad_dgmr_prgm,
+        dxgrad_term_code_grad,
+        dxgrad_grad_hrs,
+        dxgrad_req_hrs
+FROM ENROLL.dxgrad_current
+WHERE dxgrad_grad_hrs < dxgrad_req_hrs;
+
+
     -- Graduates Tab
     SELECT (SELECT count(DISTINCT dxgrad_pidm) FROM dxgrad_current) AS distinct_hc,
            (SELECT count(*) FROM dxgrad_current)                    AS degree_count
@@ -531,7 +553,8 @@
     FROM   dxgrad_current
     GROUP  BY dxgrad_ipeds_levl
     ORDER  BY dxgrad_ipeds_levl;
-    
+
+
     -- Gender Tab
     SELECT (SELECT count(*) FROM dxgrad_current WHERE dxgrad_sex = 'F') 
            AS f_degrees,
@@ -548,75 +571,7 @@
            count(*) as graduates
     FROM   dxgrad_current
     GROUP  BY dxgrad_cipc_code, dxgrad_ushe_majr_desc;
- */
+
  ----------------------------------------------------------------------------------------------------
- 
- -- 
-    SELECT * FROM error_log WHERE err_cnt > 0 ORDER BY label;
- /*   
-    SELECT count(distinct dsc_pidm) FROM students03@dscir WHERE s_banner_id IN ('00296739',
-'00284465',
-'00289496',
-'00325391',
-'00247591',
-'00262573',
-'00208471',
-'00206085',
-'00271398',
-'00314792',
-'00245103',
-'00303829',
-'00117804',
-'00188884',
-'00197762',
-'00304858',
-'00295740',
-'00237212',
-'00280000',
-'00120712',
-'00278160',
-'00287530',
-'00255213',
-'00312188');
 
-SELECT count(*) FROM dxgrad_current;
-SELECT count(DISTINCT dxgrad_pidm) FROM dxgrad_current;
-SELECT dxgrad_ipeds_levl, count(*) from dxgrad_current GROUP BY dxgrad_ipeds_levl;
-SELECT dxgrad_sex, count(*) from dxgrad_current GROUP BY dxgrad_sex;
-SELECT dxgrad_sex, count(distinct dxgrad_pidm) from dxgrad_current GROUP BY dxgrad_sex;
-SELECT dxgrad_cipc_code, count(*) from dxgrad_current GROUP BY dxgrad_cipc_code;
- 
- -- Students 18 and under
- SELECT dxgrad_pidm      AS pidm, 
-        dxgrad_id        AS banner_id, 
-        dsc.f_format_name(dxgrad_pidm,'LFMI') 
-                         AS full_name, 
-        dxgrad_Age       AS age_at_grad,
-        dxgrad_degc_code AS degree_level,
-        dxgrad_dgmr_prgm AS program_code,
-        CASE WHEN EXISTS 
-                  (
-                    SELECT 'Y'
-                    FROM   student_courses@dscir 
-                    WHERE  dsc_pidm = dxgrad_pidm 
-                    AND    instr(sc_crs_sec,'S') > 0
-                  )
-               OR EXISTS
-                  (
-                    SELECT 'Y'
-                    FROM   students03@dscir
-                    WHERE  dsc_pidm  = dxgrad_pidm
-                    AND    cur_prgm1 = 'ND-SA'
-                  ) THEN 'Y' ELSE 'N' END AS success_academy
-from    dxgrad_current 
-where   dxgrad_age <= 18;
-
--- "Other" type programs
-SELECT DISTINCT dxgrad_cipc_code, stvmajr_desc, count(*) AS graduates
-FROM   dxgrad_current, stvmajr
-where  dxgrad_grad_majr = stvmajr_code
-AND    dxgrad_cipc_code IN ('090199','131399','309999','520299') 
-GROUP BY dxgrad_cipc_code, stvmajr_desc;
-
- /**/
 -- end of file
