@@ -2,10 +2,26 @@
 -- Set Parameters :gradstart = 'DD-MMM-YY' i.e '30-JUN-20'
                   :gradend = 'DD-MMM-YY' i.e '01-JUL-21'
 ***************************************************************************************************/
-truncate table dxgrad_current;
+
+/*
+2021 Changes by using to gpa, and credit hours
+ALTER TABLE ENROLL.dxgrad_current
+MODIFY (
+   dxgrad_gpa NUMBER(4,3),
+   dxgrad_trans_hrs NUMBER(5,1),
+   dxgrad_grad_hrs NUMBER(5,1),
+   dxgrad_other_hrs NUMBER(4,1),
+   dxgrad_remed_hrs NUMBER(4,1),
+   dxgrad_req_hrs NUMBER(3, 0)
+   );
+
+COMMIT;
+ */
+
+TRUNCATE TABLE dxgrad_current;
 
 
-insert into dxgrad_current
+INSERT INTO dxgrad_current
     (dxgrad_pidm,
      dxgrad_id,
      dxgrad_ssn,
@@ -29,7 +45,7 @@ insert into dxgrad_current
      dxgrad_ushe_majr_coll,
      dxgrad_grad_minr1,
      dxgrad_grad_minr2) (
-    select
+    SELECT
         shrdgmr_pidm,                      -- dxgrad_pidm
         'D' || spriden_id,      -- dxgrad_id
 
@@ -37,15 +53,15 @@ insert into dxgrad_current
         '2021',               -- dxgrad_acyr
         shrdgmr_term_code_grad,            -- dxgrad_term_code_grad
         shrdgmr_grad_date,                 -- dxgrad_dsugrad_dt
-        substr(spriden_last_name, 1, 15),  -- dxgrad_last_name
-        substr(spriden_first_name, 1, 15), -- dxgrad_first_name
-        substr(spriden_mi, 1, 15),         -- dxgrad_middle
-        substr(spbpers_name_suffix, 1, 4), -- dxgrad_suffix
+        SUBSTR(spriden_last_name, 1, 15),  -- dxgrad_last_name
+        SUBSTR(spriden_first_name, 1, 15), -- dxgrad_first_name
+        SUBSTR(spriden_mi, 1, 15),         -- dxgrad_middle
+        SUBSTR(spbpers_name_suffix, 1, 4), -- dxgrad_suffix
         spbpers_birth_date,                -- dxgrad_birth_dt
         spbpers_sex,                       -- dxgrad_sex
         shrdgmr_levl_code,                 -- dxgrad_levl_code
         shrdgmr_seq_no,                    -- dxgrad_dgmr_seqno
-        substr(shrdgmr_degc_code, 1, 4),   -- dxgrad_degc_code
+        SUBSTR(shrdgmr_degc_code, 1, 4),   -- dxgrad_degc_code
         stvdegc_desc,                      -- dxgrad_degc_desc
         shrdgmr_majr_code_1,               -- dxgrad_grad_majr
         shrdgmr_program,                   -- dxgrad_dgmr_prgm
@@ -54,14 +70,14 @@ insert into dxgrad_current
         shrdgmr_coll_code_1,               -- dxgrad_ushe_majr_coll
         shrdgmr_majr_code_minr_1,          -- dxgrad_grad_minr1
         shrdgmr_majr_code_minr_2           -- dxgrad_grad_minr2
-    from spbpers, stvmajr, shrdgmr, spriden, stvdegc
-    where shrdgmr_pidm = spbpers_pidm(+)
-      and shrdgmr_pidm = spriden_pidm
-      and shrdgmr_majr_code_1 = stvmajr_code
-      and shrdgmr_degc_code = stvdegc_code
-      and shrdgmr_degs_code = 'AW'
-      and spriden_change_ind is null
-      and shrdgmr_grad_date between to_date(:gradstart) and to_date(:gradend) -- change every year
+    FROM spbpers, stvmajr, shrdgmr, spriden, stvdegc
+    WHERE shrdgmr_pidm = spbpers_pidm(+)
+      AND shrdgmr_pidm = spriden_pidm
+      AND shrdgmr_majr_code_1 = stvmajr_code
+      AND shrdgmr_degc_code = stvdegc_code
+      AND shrdgmr_degs_code = 'AW'
+      AND spriden_change_ind IS NULL
+      AND shrdgmr_grad_date BETWEEN TO_DATE(:gradstart) AND TO_DATE(:gradend) -- change every year
 );
 
 
@@ -99,7 +115,7 @@ select
     dxgrad_pidm,
     dxgrad_id,
     dxgrad_suffix
-from dxgrad_current
+FROM dxgrad_current
 where dxgrad_suffix is not null
   and upper(dxgrad_suffix) not in ('JR', 'SR', 'II', 'III', 'IV');
 --
@@ -128,15 +144,15 @@ where dxgrad_suffix is not null
                  US. Enter UT099 if student is Out of State, In the US.                           */
 ----------------------------------------------------------------------------------------------------
 
--- Fetch county code from SABSUPL table.
+-- Fetch county code FROM SABSUPL table.
 update dxgrad_current
 set dxgrad_ut_cnty_code = (
     select
         (c.sabsupl_cnty_code_admit)
-    from sabsupl c
+    FROM sabsupl c
     where c.sabsupl_pidm = dxgrad_pidm
       and c.sabsupl_appl_no || c.sabsupl_term_code_entry = (
-        select MIN(d.sabsupl_appl_no || d.sabsupl_term_code_entry) from sabsupl d where d.sabsupl_pidm = dxgrad_pidm))
+        select MIN(d.sabsupl_appl_no || d.sabsupl_term_code_entry) FROM sabsupl d where d.sabsupl_pidm = dxgrad_pidm))
 where dxgrad_ut_cnty_code is null;
 --
 
@@ -145,8 +161,8 @@ set dxgrad_ut_cnty_code = case LENGTH(dxgrad_ut_cnty_code)
                               when 1 then 'UT00' || dxgrad_ut_cnty_code
                               when 2 then 'UT0' || dxgrad_ut_cnty_code
                               when 3 then 'UT' || dxgrad_ut_cnty_code
-                              when 4 then 'UT' || substr(dxgrad_ut_cnty_code, 2, 3)
-                              when 5 then 'UT' || substr(dxgrad_ut_cnty_code, 3, 3)
+                              when 4 then 'UT' || SUBSTR(dxgrad_ut_cnty_code, 2, 3)
+                              when 5 then 'UT' || SUBSTR(dxgrad_ut_cnty_code, 3, 3)
                               else dxgrad_ut_cnty_code
                           end
 where dxgrad_ut_cnty_code not like 'UT%';
@@ -176,7 +192,7 @@ update dxgrad_current
 set dxgrad_ethn_n = 'N'
 where EXISTS(select
                  spbpers_citz_code
-             from spbpers, gorvisa
+             FROM spbpers, gorvisa
              where spbpers_pidm = dxgrad_pidm
                and gorvisa_pidm = dxgrad_pidm
                and spbpers_citz_code = '2'
@@ -195,7 +211,7 @@ where dxgrad_ethn_code is null
 -- Set Hispanic where spbpers_ethn_cde = '2'
 update dxgrad_current
 set dxgrad_ethn_h = 'H'
-where EXISTS(select spbpers_ethn_cde from spbpers where spbpers_pidm = dxgrad_pidm and spbpers_ethn_cde = '2')
+where EXISTS(select spbpers_ethn_cde FROM spbpers where spbpers_pidm = dxgrad_pidm and spbpers_ethn_cde = '2')
   and dxgrad_ethn_h is null
   and dxgrad_ethn_n is null;
 --
@@ -211,14 +227,14 @@ update dxgrad_current
 set dxgrad_ethn_code = 'H',
     dxgrad_ethn_h    = 'H'
 where dxgrad_pidm in (
-    select spbpers_pidm from spbpers where dxgrad_pidm = spbpers_pidm and spbpers_ethn_code = 'H')
+    select spbpers_pidm FROM spbpers where dxgrad_pidm = spbpers_pidm and spbpers_ethn_code = 'H')
   and dxgrad_ethn_code is null;
 --
 
 -- Set Asian where gorprac_race_cde = 'A'
 update dxgrad_current
 set dxgrad_ethn_a = (
-    select gorprac_race_cde from gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'A')
+    select gorprac_race_cde FROM gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'A')
 where dxgrad_ethn_h is null
   and dxgrad_ethn_n is null;
 --
@@ -233,7 +249,7 @@ where dxgrad_ethn_h is null
 -- Set Black/African-American where gorprac_race_cde = 'B'
 update dxgrad_current
 set dxgrad_ethn_b = (
-    select gorprac_race_cde from gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'B')
+    select gorprac_race_cde FROM gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'B')
 where dxgrad_ethn_h is null
   and dxgrad_ethn_n is null;
 --
@@ -248,7 +264,7 @@ where dxgrad_ethn_h is null
 -- Set Native-American/American-Indian where gorprac_race_cde = 'I'
 update dxgrad_current
 set dxgrad_ethn_i = (
-    select gorprac_race_cde from gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'I')
+    select gorprac_race_cde FROM gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'I')
 where dxgrad_ethn_h is null
   and dxgrad_ethn_n is null;
 --
@@ -263,7 +279,7 @@ where dxgrad_ethn_h is null
 -- Set Native-Hawaiian/Pacific-Islander where gorprac_race_cde = 'P'
 update dxgrad_current
 set dxgrad_ethn_p = (
-    select gorprac_race_cde from gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'P')
+    select gorprac_race_cde FROM gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'P')
 where dxgrad_ethn_h is null
   and dxgrad_ethn_n is null
   and dxgrad_ethn_i is not null;
@@ -279,7 +295,7 @@ where dxgrad_ethn_h is null
 -- Set White/Caucasian where gorprac_race_cde = 'W'
 update dxgrad_current
 set dxgrad_ethn_w = (
-    select gorprac_race_cde from gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'W')
+    select gorprac_race_cde FROM gorprac where gorprac_pidm = dxgrad_pidm and gorprac_race_cde = 'W')
 where dxgrad_ethn_h is null
   and dxgrad_ethn_n is null;
 --
@@ -299,7 +315,7 @@ where d1.dxgrad_ethn_h is null
   and d1.dxgrad_pidm in (
     select distinct
         d2.dxgrad_pidm
-    from dxgrad_current d2
+    FROM dxgrad_current d2
     where LENGTH(d2.dxgrad_ethn_a || d2.dxgrad_ethn_b || d2.dxgrad_ethn_h || d2.dxgrad_ethn_i || d2.dxgrad_ethn_p ||
                  d2.dxgrad_ethn_w) > 1);
 --
@@ -315,7 +331,7 @@ where dxgrad_ethn_code is null;
 select
     dxgrad_ethn_code,
     count(distinct (dxgrad_pidm))
-from dxgrad_current
+FROM dxgrad_current
 group by dxgrad_ethn_code;
 --
 
@@ -323,7 +339,7 @@ group by dxgrad_ethn_code;
 update dxgrad_current
 set dxgrad_ethnic_desc = (
     select stvethn_desc
-    from stvethn
+    FROM stvethn
     where dxgrad_ethn_code = stvethn_code);
 --
 
@@ -367,7 +383,7 @@ select
     shrdgmr_term_code_grad,
     shrdgmr_acyr_code,
     shrdgmr_user_id
-from shrdgmr, spriden
+FROM shrdgmr, spriden
 where shrdgmr_pidm = spriden_pidm
   and shrdgmr_degs_code = 'AW'
   and spriden_entity_ind = 'P'
@@ -384,11 +400,11 @@ where shrdgmr_pidm = spriden_pidm
                  Business/Managerial Economics (520601), not in Business, General (520101).       */
 ----------------------------------------------------------------------------------------------------
 
--- Fetch CIP Codes from CIP2010 Table
--- Fetch CIP Codes from CIP2010 Table
+-- Fetch CIP Codes FROM CIP2010 Table
+-- Fetch CIP Codes FROM CIP2010 Table
 update dxgrad_current
 set dxgrad_cipc_code = (select distinct stvmajr_cipc_code
-from stvmajr, shrdgmr
+FROM stvmajr, shrdgmr
     where stvmajr_code = shrdgmr_majr_code_1
       and dxgrad_pidm = shrdgmr_pidm
       and dxgrad_grad_majr = stvmajr_code
@@ -398,18 +414,18 @@ from stvmajr, shrdgmr
 select
     (case
          when (
-                  select count(*) from dxgrad_current where dxgrad_dsugrad_dt is null or dxgrad_cipc_code is null) > 0
+                  select count(*) FROM dxgrad_current where dxgrad_dsugrad_dt is null or dxgrad_cipc_code is null) > 0
              then 'YES'
          else 'NO'
      end) as "Missing Cip Code?"
-from dual;
+FROM dual;
 
--- Calculate and populate the GPA from SHRTGPA
+-- Calculate and populate the GPA FROM SHRTGPA
 update dxgrad_current
 set dxgrad_gpa = (
     select
-        lpad((sum(shrtgpa_quality_points) / sum(shrtgpa_gpa_hours) * 1000), 4, '0')
-    from shrtgpa
+        lpad((sum(shrtgpa_quality_points) / sum(shrtgpa_gpa_hours)), 4, '0')
+    FROM shrtgpa
     where shrtgpa_pidm = dxgrad_pidm
       and shrtgpa_levl_code = dxgrad_levl_code
       and shrtgpa_term_code <= dxgrad_term_code_grad)
@@ -422,18 +438,18 @@ where dxgrad_gpa is null;
 -- ELEMENT NAME: Cumulative Undergraduate Transfer Semester Credit Hours Accepted
 -- FIELD NAME:   G_TRANS
 /* DEFINITION:   Total number of undergraduate credit hours accepted to date at your institution.
-                 (e.g. Transfer credit from another institution). This does not include credits
+                 (e.g. Transfer credit FROM another institution). This does not include credits
                  earned at your institution (see S-20). This does not include AP, CLEP, Challenge,
                  or Military Credit. These hours are included in the G_HRS_OTHER field. Hours
                  should all be converted to semester hours.                                       */
 ----------------------------------------------------------------------------------------------------
 
--- Calculate and populate transfer hours (if any) from SHTRGPA
+-- Calculate and populate transfer hours (if any) FROM SHTRGPA
 update dxgrad_current
 set dxgrad_trans_hrs = (
     select
-        round(sum(shrtgpa_hours_earned), 1) * 10
-    from shrtgpa, shrtrit, stvsbgi
+        round(sum(shrtgpa_hours_earned), 1)
+    FROM shrtgpa, shrtrit, stvsbgi
  where shrtgpa_levl_code = dxgrad_levl_code
       and shrtgpa_trit_seq_no = shrtrit_seq_no
       and shrtgpa_pidm = shrtrit_pidm
@@ -448,18 +464,18 @@ set dxgrad_trans_hrs = (
 
 
 -- G-COM14 --------------------------------------------------------------------------------------------
--- ELEMENT NAME: Accepted Credit from Other Sources
+-- ELEMENT NAME: Accepted Credit FROM Other Sources
 -- FIELD NAME:   G_HRS_OTHER
-/* DEFINITION:   Hours from AP credit, CLEP test, Language test, Challenge, Military etc. Hours
+/* DEFINITION:   Hours FROM AP credit, CLEP test, Language test, Challenge, Military etc. Hours
                  should all be converted to semester hours.                                       */
 ----------------------------------------------------------------------------------------------------
 
--- Calculate and populate other hours from SHRTRCE and SHRTRIT
+-- Calculate and populate other hours FROM SHRTRCE and SHRTRIT
 update dxgrad_current
 set dxgrad_other_hrs = (
     select
-        round(sum(shrtrce_credit_hours), 1) * 10
-    from shrtrce, shrtrit, stvsbgi
+        round(sum(shrtrce_credit_hours), 1)
+    FROM shrtrce, shrtrit, stvsbgi
     where shrtrce_pidm = dxgrad_pidm
       and shrtrce_pidm = shrtrit_pidm
       and shrtrce_trit_seq_no = shrtrit_seq_no
@@ -477,7 +493,7 @@ set dxgrad_other_hrs = (
 /* DEFINITION:   Remedial Hours included in S-20. Should all be converted to semester hours.      */
 ----------------------------------------------------------------------------------------------------
 
-/* How many graduates have remedial education credits ATTEMPTED from DSC. This is used to update
+/* How many graduates have remedial education credits ATTEMPTED FROM DSC. This is used to update
    students in dxgrad_current (most recent graduates) with a value to indicate the total amount of
    DevEd credits (no earned on shrtckg) SLCC -DevEd courses are determined by which departments owns
    the courses. SLCC uses department code but DSC will have to use subjects and course numbers which
@@ -490,14 +506,14 @@ set dxgrad_other_hrs = (
  * 8/6/12 originally used using shrtckn_repeat_sys_ind <> 'M' and should have been using
    shrtckn_repeat_course_ind <> 'E' (E = not counted in GPA, I = Repeat counted in GPA) */
 
--- Calculate and populate remedial hours from SHRTCKG and SHRTCKN
+-- Calculate and populate remedial hours FROM SHRTCKG and SHRTCKN
 UPDATE dxgrad_current
     SET    dxgrad_remed_hrs = 0 ;
 
 
 UPDATE dxgrad_current
     SET    dxgrad_remed_hrs =
-           (SELECT round(sum(shrtckg_credit_hours), 1) * 10
+           (SELECT round(sum(shrtckg_credit_hours), 1)
               FROM shrtckg a,
                    shrtckn b,
                    shrgrde c
@@ -554,12 +570,12 @@ set dxgrad_grad_hrs = '0'
 where dxgrad_grad_hrs is null;
 
 
--- Calculate and populate total hours from SHRTGPA minus remedial hours
+-- Calculate and populate total hours FROM SHRTGPA minus remedial hours
 update dxgrad_current a
 set a.dxgrad_grad_hrs = ( -- Total Hours
                             select
-                                round(sum(shrtgpa_hours_earned), 1) * 10
-                            from shrtgpa
+                                round(sum(shrtgpa_hours_earned), 1)
+                            FROM shrtgpa
                             where shrtgpa_pidm = a.dxgrad_pidm
                               and shrtgpa_levl_code = dxgrad_levl_code
                               and shrtgpa_term_code <= dxgrad_term_code_grad
@@ -584,7 +600,7 @@ set dxgrad_prev_degr = (
             when prev_degree_max_lvl like 'B%' then '05'
             when prev_degree_max_lvl like 'M%' then '07'
         end
-    from (
+    FROM (
         select
             pidm,
             case
@@ -597,13 +613,13 @@ set dxgrad_prev_degr = (
                 when (deg_rank_2 > deg_rank_1 or deg_rank_2 > deg_rank_3) then deg_desc_2
                 else coalesce(deg_desc_1, deg_desc_2, deg_desc_3)
             end as prev_degree_max_lvl
-        from (
+        FROM (
             with cte_prev_dgr as (
                 select shrdgmr_pidm, max(shrdgmr_seq_no) as shrdgmr_seq_no
-                from shrdgmr
+                FROM shrdgmr
                 where shrdgmr_seq_no > 1
                 group by shrdgmr_pidm),
-                -- Grabs Highest Degree earned from a previous institution (SORDEGR)
+                -- Grabs Highest Degree earned FROM a previous institution (SORDEGR)
                 cte_prev_dgr2 as (
                     select
                         sordegr_pidm as pidm,
@@ -616,7 +632,7 @@ set dxgrad_prev_degr = (
                                 when stvdegc_dlev_code = 'LA' then '1'
                                 else '0'
                             end) as deg_rank
-                    from saturn.sordegr, saturn.stvdegc, spriden
+                    FROM saturn.sordegr, saturn.stvdegc, spriden
                     where sordegr_pidm = spriden_pidm
                       and sordegr_degc_code = stvdegc_code
                       and stvdegc_acat_code >= 20
@@ -631,7 +647,7 @@ set dxgrad_prev_degr = (
                         pidm,
                         stvdegc_code,
                         deg_rank
-                    from cte_prev_dgr2, saturn.sordegr, saturn.stvdegc, spriden
+                    FROM cte_prev_dgr2, saturn.sordegr, saturn.stvdegc, spriden
                     where pidm = sordegr_pidm
                       and case
                               when stvdegc_dlev_code = 'DR' then '5'
@@ -648,7 +664,7 @@ set dxgrad_prev_degr = (
                       and sordegr_degc_code <> '000000'
                       and spriden_change_ind is null
                       and sordegr_degc_date <= to_date('01-JUN-2019')),
-                -- Grab degrees from Transferred In Students (SHRTRAM)
+                -- Grab degrees FROM Transferred In Students (SHRTRAM)
                 cte_prev_deg4 as (
                     select
                         shrtram_pidm,
@@ -661,7 +677,7 @@ set dxgrad_prev_degr = (
                             when stvdegc_dlev_code = 'LA' then '1'
                             else '0'
                         end as deg_rank_3
-                    from stvdegc, shrtram, spriden
+                    FROM stvdegc, shrtram, spriden
                     where shrtram_pidm = spriden_pidm
                       and shrtram_degc_code = stvdegc_code
                       and stvdegc_acat_code >= 20
@@ -700,7 +716,7 @@ set dxgrad_prev_degr = (
                                                          when shrdgmr_degc_code like 'L%' then '1'
                                                          else '0'
                                                      end, s3.deg_rank) as greatest_deg_rank
-            from cte_prev_dgr s1
+            FROM cte_prev_dgr s1
             left join shrdgmr s2 on s1.shrdgmr_pidm = s2.shrdgmr_pidm and s2.shrdgmr_seq_no = s1.shrdgmr_seq_no - 1
             left join cte_prev_dgr3 s3 on s3.pidm = s1.shrdgmr_pidm
             left join cte_prev_deg4 s4 on s4.shrtram_pidm = s1.shrdgmr_pidm
@@ -718,7 +734,7 @@ set dxgrad_prev_degr = (
 UPDATE dxgrad_current a
    SET dxgrad_ipeds_levl = (SELECT ipeds_award_lvl
                               FROM dsc_programs_current
-                             WHERE prgm_code = a.dxgrad_dgmr_prgm)
+                             WHERE prgm_code = a.dxgrad_dgmr_prgm);
 
 update dxgrad_current
 set dxgrad_ipeds_levl = case
@@ -740,13 +756,13 @@ where dxgrad_ipeds_levl is null;
 -- To compile the degrees' required hours, we will have to create a table for hours, load it with
 -- data, and query against it with the dxgrad table.
 
--- Fetch hours for degree from the hrstodegAYAY table where AYAY is the graduating year
+-- Fetch hours for degree FROM the hrstodegAYAY table where AYAY is the graduating year
 
 update dxgrad_current
 set dxgrad_req_hrs = (
     select
         hrs_this_yr --nts::replace with variable.
-    from dsc_programs_current
+    FROM dsc_programs_current
     where dxgrad_dgmr_prgm = prgm_code
       and (dxgrad_degc_code = degc_code or dxgrad_grad_majr = majr_code)
       and rownum = 1 -- nts::need to clean up dsc_programs_all table so this isn't necessary.
@@ -768,21 +784,21 @@ update dxgrad_current
 set dxgrad_hs_code = (
     select
         a.sorhsch_sbgi_code
-    from sorhsch a
+    FROM sorhsch a
     where a.sorhsch_pidm = dxgrad_pidm
       and a.sorhsch_graduation_date is not null
       and a.sorhsch_trans_recv_date is not null
       and a.sorhsch_graduation_date = (
         select
             MAX(b.sorhsch_graduation_date)
-        from sorhsch b
+        FROM sorhsch b
         where b.sorhsch_pidm = dxgrad_pidm
           and b.sorhsch_pidm = a.sorhsch_pidm
           and b.sorhsch_trans_recv_date is not null
           and b.sorhsch_pidm || b.sorhsch_trans_recv_date = (
             select
                 MAX(c.sorhsch_pidm || c.sorhsch_trans_recv_date)
-            from sorhsch c
+            FROM sorhsch c
             where c.sorhsch_pidm = dxgrad_pidm
               and c.sorhsch_pidm = b.sorhsch_pidm
               and c.sorhsch_trans_recv_date is not null
@@ -795,7 +811,7 @@ where dxgrad_hs_code is null;
 -- Fetch high school codes that weren't found in the above query using the older method.
 update dxgrad_current
 set dxgrad_hs_code = (
-    select sorhsch_sbgi_code from sorhsch where sorhsch_pidm = dxgrad_pidm and rownum < 2)
+    select sorhsch_sbgi_code FROM sorhsch where sorhsch_pidm = dxgrad_pidm and rownum < 2)
 where dxgrad_hs_code is null;
 
 /*
@@ -868,17 +884,17 @@ where dxgrad_hs_code = '969999';
                  systems in accordance with 53A-1-603.5 and 53B-1-109.                            */
 ----------------------------------------------------------------------------------------------------
 
--- Fetch known SSIDs from GORADID.
+-- Fetch known SSIDs FROM GORADID.
 update dxgrad_current
 set dxgrad_ssid = (
     select
-        substr(goradid_additional_id, 0, 10)
-      from goradid g1
+        SUBSTR(goradid_additional_id, 0, 10)
+      FROM goradid g1
  where goradid_pidm = dxgrad_pidm
    and goradid_adid_code = 'SSID'
    and goradid_additional_id != '*'
    and goradid_version = (select g2.goradid_version
-                            from goradid g2
+                            FROM goradid g2
                            where g2.goradid_pidm = g1.goradid_pidm
                              and g2.goradid_activity_date = g1.goradid_activity_date
                              and g2.goradid_adid_code = 'SSID'
@@ -892,19 +908,19 @@ set dxgrad_ssid = (
 where dxgrad_ssid is null;
 --
 
--- Fetch known SSIDs from SOAHSCH.
+-- Fetch known SSIDs FROM SOAHSCH.
 update dxgrad_current
 set dxgrad_ssid = (
-    select sorhsbj_subj_gpa from sorhsbj where sorhsbj_pidm = dxgrad_pidm and sorhsbj_sbjc_code = 'SSID')
+    select sorhsbj_subj_gpa FROM sorhsbj where sorhsbj_pidm = dxgrad_pidm and sorhsbj_sbjc_code = 'SSID')
 where dxgrad_ssid is null;
 --
 
--- Fetch known SSIDs from the SSID table (grad date <= 2008).
+-- Fetch known SSIDs FROM the SSID table (grad date <= 2008).
 update dxgrad_current
 set dxgrad_ssid = (
     select
         i.ssid_ushe
-    from ssid i
+    FROM ssid i
     where dxgrad_hs_code between '450000' and '458999'
       and dxgrad_pidm = i.pidm
       and dxgrad_hs_code = hscode_ushe
@@ -928,7 +944,7 @@ where dxgrad_ssid like '3%'
 ----------------------------------------------------------------------------------------------------
 
 update dxgrad_current
-set dxgrad_ushe_term = case substr(dxgrad_term_code_grad, 5, 1)
+set dxgrad_ushe_term = case SUBSTR(dxgrad_term_code_grad, 5, 1)
                            when '3' then '1'
                            when '4' then '2'
                            when '2' then '3'
@@ -939,13 +955,13 @@ set dxgrad_ushe_term = case substr(dxgrad_term_code_grad, 5, 1)
 -- ELEMENT NAME: Major Description
 -- FIELD NAME:   dxgrad_ushe_majr_desc
 /* DEFINITION:   Major Description is now used by USHE and should match CIP Code. This query pulls
-                 the description from a table which has data directly from USHE.                  */
+                 the description FROM a table which has data directly FROM USHE.                  */
 ----------------------------------------------------------------------------------------------------
 
 update dxgrad_current
 set dxgrad_ushe_majr_desc = (
     select stvcipc_desc
-    from stvcipc
+    FROM stvcipc
     where stvcipc_code = dxgrad_cipc_code);
 
 -- DSU - Age ---------------------------------------------------------------------------------------
@@ -958,7 +974,7 @@ update dxgrad_current
 set dxgrad_age = (
     select
         f_calculate_age(dxgrad_dsugrad_dt, spbpers_birth_date, spbpers_dead_date)
-    from spbpers
+    FROM spbpers
     where spbpers_pidm = dxgrad_pidm);
 
 --
@@ -974,20 +990,19 @@ update dxgrad_current
 set dxgrad_majr_conc1 = (
     select
         MAX(a.shvacur_majr_code_conc_1)
-    from shvacur a
+    FROM shvacur a
     where a.shvacur_pidm = dxgrad_pidm
       and a.shvacur_program = dxgrad_dgmr_prgm
       and a.shvacur_key_seqno = dxgrad_dgmr_seqno
       and a.shvacur_cact_code = 'ACTIVE'
       and a.shvacur_order > 0);
---
 
 -- Set second concentration
 update dxgrad_current
 set dxgrad_majr_conc2 = (
     select
         MAX(a.shvacur_majr_code_conc_2)
-    from shvacur a
+    FROM shvacur a
     where a.shvacur_pidm = dxgrad_pidm
       and a.shvacur_key_seqno = dxgrad_dgmr_seqno
       and a.shvacur_program = dxgrad_dgmr_prgm
@@ -1001,7 +1016,7 @@ set dxgrad_majr_conc2 = (
 /* DEFINITION:   Major Description is not used by USHE.                                           */
 ----------------------------------------------------------------------------------------------------
 /*
- First uses major description from dsc_pgroams_current.  Then looks at STVMAJR.
+ First uses major description FROM dsc_pgroams_current.  Then looks at STVMAJR.
  */
 UPDATE dxgrad_current
    SET dxgrad_majr_desc = (SELECT majr_desc
@@ -1023,19 +1038,19 @@ UPDATE dxgrad_current
 /* DEFINITION:   The date on which the student graduated high school.                             */
 ----------------------------------------------------------------------------------------------------
 
--- Fetch known graduation dates from SORHSCH.
+-- Fetch known graduation dates FROM SORHSCH.
 update dxgrad_current
 set dxgrad_hsgrad_dt = (
     select
         to_char(a.sorhsch_graduation_date, 'YYYYMMDD')
-    from sorhsch a
+    FROM sorhsch a
     where a.sorhsch_pidm = dxgrad_pidm
       and a.sorhsch_graduation_date is not null
       --AND    a.sorhsch_trans_recv_date IS NOT NULL
       and a.sorhsch_graduation_date = (
         select
             MAX(b.sorhsch_graduation_date)
-        from sorhsch b
+        FROM sorhsch b
         where b.sorhsch_pidm = dxgrad_pidm
           and b.sorhsch_pidm = a.sorhsch_pidm
           --AND    b.sorhsch_trans_recv_date IS NOT NULL
@@ -1062,10 +1077,10 @@ update dxgrad_current
 set dxgrad_country_origin = (
     select
         a.sabsupl_natn_code_admit
-    from sabsupl a
+    FROM sabsupl a
     where a.sabsupl_pidm = dxgrad_pidm
       and a.sabsupl_appl_no || a.sabsupl_term_code_entry = (
-        select MIN(b.sabsupl_appl_no || b.sabsupl_term_code_entry) from sabsupl b where b.sabsupl_pidm = dxgrad_pidm));
+        select MIN(b.sabsupl_appl_no || b.sabsupl_term_code_entry) FROM sabsupl b where b.sabsupl_pidm = dxgrad_pidm));
 --
 
 -- DSU - State of Origin ---------------------------------------------------------------------------
@@ -1079,10 +1094,10 @@ update dxgrad_current
 set dxgrad_state_origin = (
     select
         a.sabsupl_stat_code_admit
-    from sabsupl a
+    FROM sabsupl a
     where a.sabsupl_pidm = dxgrad_pidm
       and a.sabsupl_appl_no || a.sabsupl_term_code_entry = (
-        select MIN(b.sabsupl_appl_no || b.sabsupl_term_code_entry) from sabsupl b where b.sabsupl_pidm = dxgrad_pidm));
+        select MIN(b.sabsupl_appl_no || b.sabsupl_term_code_entry) FROM sabsupl b where b.sabsupl_pidm = dxgrad_pidm));
 --
 
 -- DSU-Initial-Term --------------------------------------------------------------------------------
@@ -1094,9 +1109,9 @@ set dxgrad_state_origin = (
 update dxgrad_current
 set dxgrad_initial_term = nvl((
                                   select MIN(banner_term)
-                                  from students03@dscir
+                                  FROM students03@dscir
                                   where dxgrad_pidm = dsc_pidm and s_entry_action in ('FF', 'FH', 'TU')), (
-                                  select MIN(banner_term) from students03@dscir where dxgrad_pidm = dsc_pidm));
+                                  select MIN(banner_term) FROM students03@dscir where dxgrad_pidm = dsc_pidm));
 --
 
 -- DSU-Initial-Entry-Action ------------------------------------------------------------------------
@@ -1110,10 +1125,10 @@ update dxgrad_current
 set dxgrad_initial_ea = (
     select distinct
         s_entry_action
-    from bailey.students03@dscir
+    FROM bailey.students03@dscir
     where dxgrad_pidm = dsc_pidm
-      and substr(dsc_term_code, 0, 5) || 0 = dxgrad_initial_term
-      and substr(dsc_term_code, 5, 2) in ('3E', '43', '23') -- Only Sum EOT, Fall 3rd and Spr 3rd
+      and SUBSTR(dsc_term_code, 0, 5) || 0 = dxgrad_initial_term
+      and SUBSTR(dsc_term_code, 5, 2) in ('3E', '43', '23') -- Only Sum EOT, Fall 3rd and Spr 3rd
 );
 --
 
@@ -1125,13 +1140,13 @@ set dxgrad_initial_ea = 'TU'
 where dxgrad_pidm in (
     select
         b.sgbstdn_pidm
-    from sgbstdn b
+    FROM sgbstdn b
     where b.sgbstdn_styp_code in ('T')
       and b.sgbstdn_pidm = dxgrad_pidm
       and b.sgbstdn_term_code_eff = (
         select
             MAX(a.sgbstdn_term_code_eff)
-        from sgbstdn a, dxgrad_current d
+        FROM sgbstdn a, dxgrad_current d
         where a.sgbstdn_pidm = b.sgbstdn_pidm
           and a.sgbstdn_pidm = d.dxgrad_pidm
           and a.sgbstdn_term_code_eff <= dxgrad_term_code_grad))
@@ -1147,11 +1162,11 @@ set dxgrad_initial_ea = case
                                                                     else 'FF'
                                                                 end)
                             when (case
-                                      when substr(dxgrad_initial_term, 5, 1) = '1'
+                                      when SUBSTR(dxgrad_initial_term, 5, 1) = '1'
                                           then to_number(substr(dxgrad_initial_term, 0, 4) || '0101')
-                                      when substr(dxgrad_initial_term, 5, 1) = '2'
+                                      when SUBSTR(dxgrad_initial_term, 5, 1) = '2'
                                           then to_number(substr(dxgrad_initial_term, 0, 4) || '0801')
-                                      when substr(dxgrad_initial_term, 5, 1) = '3'
+                                      when SUBSTR(dxgrad_initial_term, 5, 1) = '3'
                                           then to_number(substr(dxgrad_initial_term, 0, 4) || '0501')
                                   end) - to_number(dxgrad_hsgrad_dt) > '10000' then 'FF'
                             else 'FH'
@@ -1169,10 +1184,10 @@ update dxgrad_current
 set dxgrad_initial_pt_ft = (
     select
         s_pt_ft
-    from bailey.students03@dscir
+    FROM bailey.students03@dscir
     where dxgrad_pidm = dsc_pidm
-      and substr(dxgrad_initial_term, '0', '5') = substr(dsc_term_code, '0', '5')
-      and substr(dsc_term_code, '6', '1') = case dxgrad_ushe_term when 1 then 'E' when 2 then '3' when 3 then '3' end)
+      and SUBSTR(dxgrad_initial_term, '0', '5') = SUBSTR(dsc_term_code, '0', '5')
+      and SUBSTR(dsc_term_code, '6', '1') = case dxgrad_ushe_term when 1 then 'E' when 2 then '3' when 3 then '3' end)
 where dxgrad_initial_term is not null;
 --
 
@@ -1180,7 +1195,7 @@ update dxgrad_current
 set dxgrad_initial_pt_ft = 'F'
 where EXISTS(select
                  sum(sfrstcr_credit_hr)
-             from sfrstcr, stvrsts
+             FROM sfrstcr, stvrsts
              where sfrstcr_pidm = dxgrad_pidm
                and sfrstcr_rsts_code = stvrsts_code
                and stvrsts_incl_sect_enrl = 'Y'
@@ -1206,7 +1221,7 @@ where dxgrad_initial_pt_ft not in ('F', 'P')
 update dxgrad_current
 set dxgrad_initial_degint = (
     select s_deg_intent
-    from bailey.students03@dscir
+    FROM bailey.students03@dscir
     where dxgrad_pidm = dsc_pidm and dxgrad_initial_term = dsc_term_code)
 where dxgrad_initial_term is not null;
 --
@@ -1257,14 +1272,14 @@ where dxgrad_degc_code like 'M%'
 update dxgrad_current
 set dxgrad_initial_sport = (
     select max(sgrsprt_actc_code)
-    from sgrsprt
+    FROM sgrsprt
     where sgrsprt_pidm = dxgrad_pidm and dxgrad_initial_term = sgrsprt_term_code);
 --
 
 -- DSU-Pell-Paid -----------------------------------------------------------------------------------
 -- ELEMENT NAME: Pell Paid
 -- FIELD NAME:   dxgrad_pell_pd
-/* DEFINITION:   Whether the student received Pell Grant Funding while earning the degree from which
+/* DEFINITION:   Whether the student received Pell Grant Funding while earning the degree FROM which
                  they are now graduating.                                                         */
 ----------------------------------------------------------------------------------------------------
 
@@ -1274,7 +1289,7 @@ set dxgrad_pell_pd = 'Y'
 where dxgrad_pidm in (
     select
         rpratrm_pidm
-    from rpratrm
+    FROM rpratrm
     where rpratrm_pidm = dxgrad_pidm
       and rpratrm_term_code <= dxgrad_term_code_grad
       and rpratrm_fund_code in ('FPELL', 'FPELL1')
@@ -1314,15 +1329,15 @@ where dxgrad_trans_hrs is null;
 
 
 
--- Re-Fetch county code from SABSUPL table.
+-- Re-Fetch county code FROM SABSUPL table.
 update dxgrad_current
 set dxgrad_ut_cnty_code = (
     select
         (c.sabsupl_cnty_code_admit)
-    from sabsupl c
+    FROM sabsupl c
     where c.sabsupl_pidm = dxgrad_pidm
       and c.sabsupl_appl_no || c.sabsupl_term_code_entry = (
-        select MIN(d.sabsupl_appl_no || d.sabsupl_term_code_entry) from sabsupl d where d.sabsupl_pidm = dxgrad_pidm))
+        select MIN(d.sabsupl_appl_no || d.sabsupl_term_code_entry) FROM sabsupl d where d.sabsupl_pidm = dxgrad_pidm))
 where dxgrad_ut_cnty_code is null;
 --
 
@@ -1331,8 +1346,8 @@ set dxgrad_ut_cnty_code = case LENGTH(dxgrad_ut_cnty_code)
                               when 1 then 'UT00' || dxgrad_ut_cnty_code
                               when 2 then 'UT0' || dxgrad_ut_cnty_code
                               when 3 then 'UT' || dxgrad_ut_cnty_code
-                              when 4 then 'UT' || substr(dxgrad_ut_cnty_code, 2, 3)
-                              when 5 then 'UT' || substr(dxgrad_ut_cnty_code, 3, 3)
+                              when 4 then 'UT' || SUBSTR(dxgrad_ut_cnty_code, 2, 3)
+                              when 5 then 'UT' || SUBSTR(dxgrad_ut_cnty_code, 3, 3)
                               else dxgrad_ut_cnty_code
                           end
 where dxgrad_ut_cnty_code not like 'UT%';
@@ -1354,7 +1369,7 @@ where dxgrad_country_origin <> 'US'
 -- delete grads outside the date range. These shouldn't be showing up, but are somehow are.
 delete
     -- SELECT *
-from dxgrad_current
+FROM dxgrad_current
 where dxgrad_dsugrad_dt < to_date(:gradstart) -- update each year
    or dxgrad_dsugrad_dt > to_date(:gradend);
 -- update each year
@@ -1379,11 +1394,11 @@ update dxgrad_current
 set dxgrad_ut_cnty_code = (
     select
         s_county_origin
-    from students03@dscir s1
+    FROM students03@dscir s1
     where dsc_pidm = dxgrad_pidm
       and dsc_term_code = (
         select MAX(dsc_term_code)
-        from students03@dscir s2
+        FROM students03@dscir s2
         where dsc_pidm = dxgrad_pidm and banner_term <= dxgrad_term_code_grad))
 where dxgrad_ut_cnty_code is null;
 
@@ -1392,11 +1407,11 @@ update dxgrad_current
 set dxgrad_state_origin = (
     select
         s_state_origin
-    from students03@dscir s1
+    FROM students03@dscir s1
     where dsc_pidm = dxgrad_pidm
       and dsc_term_code = (
         select MAX(dsc_term_code)
-        from students03@dscir s2
+        FROM students03@dscir s2
         where dsc_pidm = dxgrad_pidm and banner_term <= dxgrad_term_code_grad))
 where dxgrad_state_origin is null;
 
@@ -1456,10 +1471,10 @@ select
     dxgrad_ushe_majr_coll as g_college,                                                                     -- G-26
     (
         select ciptitle
-        from ushe_ref_cip2010
+        FROM ushe_ref_cip2010
         where dxgrad_cipc_code = cip_code) as g_major,                                                      -- G-27
     dxgrad_degc_desc as g_deg_type_name                                                                     -- G-28
-from dxgrad_current;
+FROM dxgrad_current;
 
 
 commit;
@@ -1491,18 +1506,18 @@ SELECT dxgrad_pidm,
 -- Count (Unduplicated)
 select
     count(distinct dxgrad_pidm) as "G-36"
-from dxgrad_current;
+FROM dxgrad_current;
 
 -- Count (Duplicated)
 select
     count(dxgrad_pidm) as "G-37"
-from dxgrad_current;
+FROM dxgrad_current;
 
 -- IPEDS Level Breakdown (Duplicated)
 select
     dxgrad_ipeds_levl,
     count(dxgrad_pidm) as "G-38"
-from dxgrad_current
+FROM dxgrad_current
 group by dxgrad_ipeds_levl
 order by dxgrad_ipeds_levl;
 
@@ -1510,7 +1525,7 @@ order by dxgrad_ipeds_levl;
 select
     dxgrad_sex,
     count(dxgrad_pidm) as "G-39"
-from dxgrad_current
+FROM dxgrad_current
 group by dxgrad_sex
 order by dxgrad_sex;
 
@@ -1518,7 +1533,7 @@ order by dxgrad_sex;
 select
     dxgrad_sex,
     count(distinct dxgrad_pidm) as "G-40"
-from dxgrad_current
+FROM dxgrad_current
 group by dxgrad_sex
 order by dxgrad_sex;
 
@@ -1527,7 +1542,7 @@ select
     dxgrad_cipc_code,
     -- dxgrad_majr_desc,
     count(dxgrad_pidm) as "G-41"
-from dxgrad_current
+FROM dxgrad_current
 group by dxgrad_cipc_code
 order by dxgrad_cipc_code;
 
